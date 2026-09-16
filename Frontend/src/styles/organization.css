@@ -1,0 +1,566 @@
+.create-panel { padding: 14px; display: grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap: 9px; align-items: center; margin-bottom: 25px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.create-panel strong, .create-panel span { display: block; }
+.create-panel strong { font-size: 13px; }
+.create-panel span { color: #707887; font-size: 11px; margin-top: 4px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
+.workspace-card { min-height: 145px; padding: 17px; display: flex; gap: 13px; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; transition: .15s ease; }
+.workspace-card:hover { border-color: #3a414d; transform: translateY(-1px); }
+.project-organization {
+  font-size: 12px;
+  color: #7d8fb3;
+  margin-bottom: 6px;
+}
+.card-icon { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid #343b47; border-radius: 8px; color: #cbd1dc; flex: none; }
+.card-body { min-width: 0; }
+.card-body h3 { font-size: 15px; margin-bottom: 7px; }
+.card-body p { color: #747d8c; font-size: 12px; min-height: 32px; margin: 0 0 14px; }
+.card-meta { display: flex; gap: 7px; flex-wrap: wrap; color: #727b89; font-size: 11px; }
+.table { border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.table-row { display: grid; grid-template-columns: 1.1fr 1.4fr .8fr 1.3fr; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid #20242b; color: #9ca5b3; font-size: 12px; }
+.table-head { border-top: 0; color: #656e7d; background: #0e1014; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+.person { display: flex; align-items: center; color: #e3e7ee; }
+.project-list { display: grid; }
+.project-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; padding: 11px 4px; align-items: center; border-top: 1px solid #20242b; font-size: 12px; color: #858d9c; }
+.project-row strong { color: #dce1e9; }
+.project-dot { width: 8px; height: 8px; border-radius: 50%; background: #c5ccd8; }
+/* =========================================================
+   ORGANIZATION CRUD UI
+   ========================================================= */
+
+/* Make organization card work correctly with action buttons */
+.workspace-card {
+  position: relative;
+  min-height: 215px;
+  padding: 17px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* If the card itself is a Link */
+.workspace-card {
+  text-decoration: none;
+  color: inherit;
+}
+
+
+/* =========================================================
+   CARD BODY
+   ========================================================= */
+
+.card-body {
+  min-width: 0;
+  flex: 1;
+  padding-right: 22px;
+}
+
+.card-body h3 {
+  color: #edf0f5;
+  font-size: 15px;
+  font-weight: 650;
+  margin: 0 0 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-body p {
+  color: #747d8c;
+  font-size: 12px;
+  min-height: 32px;
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   CARD META
+   ========================================================= */
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+
+  color: #727b89;
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   CRUD ACTIONS
+   ========================================================= */
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  margin-top: 15px;
+}
+
+
+/* Base button */
+.card-actions .btn {
+  min-height: 32px;
+  padding: 0 12px;
+
+  border-radius: 7px;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background .15s ease,
+    border-color .15s ease,
+    color .15s ease,
+    transform .15s ease;
+}
+
+
+/* Edit */
+.card-actions .btn-secondary {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.card-actions .btn-secondary:hover {
+  background: var(--hover);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+
+/* Delete */
+.card-actions .btn-danger {
+  background: rgba(239, 68, 68, .08);
+  border: 1px solid rgba(239, 68, 68, .25);
+  color: #f07878;
+}
+
+.card-actions .btn-danger:hover {
+  background: rgba(239, 68, 68, .15);
+  border-color: rgba(239, 68, 68, .4);
+  color: #ff8585;
+  transform: translateY(-1px);
+}
+
+
+/* Disabled */
+.card-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* =========================================================
+   CARD ARROW
+   ========================================================= */
+
+.card-arrow {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+
+  color: #687180;
+  font-size: 15px;
+
+  transition:
+    color .15s ease,
+    transform .15s ease;
+}
+
+.workspace-card:hover .card-arrow {
+  color: #9b91ff;
+  transform: translateX(3px);
+}
+
+
+/* =========================================================
+   CREATE ORGANIZATION
+   ========================================================= */
+
+.create-panel {
+  padding: 18px;
+
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr auto;
+
+  gap: 10px;
+  align-items: center;
+
+  margin-bottom: 25px;
+
+  background: var(--surface);
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.create-panel input {
+  width: 100%;
+  height: 38px;
+
+  box-sizing: border-box;
+
+  padding: 0 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: var(--input-bg);
+  color: var(--text);
+
+  outline: none;
+
+  font-family: inherit;
+  font-size: 12px;
+
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.create-panel input::placeholder {
+  color: #646c79;
+}
+
+.create-panel input:focus {
+  border-color: #7065e8;
+  box-shadow: 0 0 0 3px rgba(112, 101, 232, .12);
+}
+
+
+/* =========================================================
+   EDIT MODAL
+   ========================================================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+  background: rgba(0, 0, 0, .68);
+
+  backdrop-filter: blur(5px);
+}
+
+.modal {
+  width: min(480px, 100%);
+
+  padding: 22px;
+
+  box-sizing: border-box;
+
+  background: var(--surface);
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  box-shadow: 0 25px 70px var(--shadow);
+}
+
+
+/* Modal heading */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 4px 0 0;
+
+  color: var(--text);
+
+  font-size: 18px;
+  font-weight: 650;
+}
+
+
+/* Close button */
+.modal-close {
+  width: 30px;
+  height: 30px;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid var(--border);
+  border-radius: 7px;
+
+  background: var(--surface-strong);
+  color: var(--muted);
+
+  cursor: pointer;
+
+  font-size: 18px;
+}
+
+.modal-close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+
+/* =========================================================
+   MODAL FORM
+   ========================================================= */
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: var(--muted);
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 10px 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: var(--input-bg);
+  color: var(--text);
+
+  outline: none;
+
+  font-family: inherit;
+  font-size: 12px;
+
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.form-group input {
+  height: 40px;
+}
+
+.form-group textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #7065e8;
+  box-shadow: 0 0 0 3px rgba(112, 101, 232, .12);
+}
+
+
+/* =========================================================
+   MODAL BUTTONS
+   ========================================================= */
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+
+  margin-top: 22px;
+  padding-top: 16px;
+
+  border-top: 1px solid #252a32;
+}
+
+.modal-actions .btn {
+  min-height: 36px;
+  padding: 0 15px;
+
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.organization-details {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 20px 0;
+}
+
+.organization-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.organization-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.organization-detail-item strong {
+  font-size: 15px;
+}
+
+.organization-detail-description {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.project-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.two-col > * {
+  min-width: 0;
+}
+
+.member-item > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-item .ui-button,
+.member-item .role-pill {
+  flex: none;
+  max-width: 100%;
+}
+
+.member-item p,
+.list-row span,
+.organization-detail-description {
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .create-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .create-panel .btn {
+    width: 100%;
+  }
+
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .member-item {
+    flex-wrap: wrap;
+  }
+
+  .member-item .role-pill {
+    margin-left: auto;
+  }
+}
+
+
+@media (max-width: 650px) {
+
+  .create-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-card {
+    min-height: 205px;
+  }
+
+  .project-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .member-item {
+    align-items: flex-start;
+  }
+
+  .member-item .role-pill,
+  .member-item .organization-remove-member {
+    margin-left: 45px;
+  }
+
+  .member-item .organization-remove-member {
+    margin-left: auto;
+  }
+}
+
+
+@media (max-width: 450px) {
+
+  .workspace-card {
+    padding: 14px;
+  }
+
+  .card-actions {
+    width: 100%;
+  }
+
+  .card-actions .btn {
+    flex: 1;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+  }
+
+  .modal {
+    padding: 18px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+  }
+}
+

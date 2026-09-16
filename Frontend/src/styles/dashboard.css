@@ -1,0 +1,101 @@
+/* ============================================================
+   DASHBOARD (Linear-inspired, uses existing --bg/--surface/--border tokens)
+   ============================================================ */
+
+.dashboard { padding: 28px 32px 60px; max-width: 1100px; }
+.dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
+.dashboard-header h1 { margin: 2px 0 0; font-size: 22px; letter-spacing: -.02em; color: var(--text); }
+.eyebrow { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+
+.dash-error { background: var(--danger-soft, #24151a); border: 1px solid var(--danger-border, #53303a); color: var(--danger, #f0a8b2); border-radius: 8px; padding: 10px 12px; font-size: 12px; margin-bottom: 16px; }
+
+.dash-stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.dash-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.dash-stat-value { font-size: 24px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+.dash-stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.dash-stat-danger .dash-stat-value { color: var(--danger); }
+.dash-stat-success .dash-stat-value { color: var(--success); }
+
+.dash-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+.dash-section--wide { grid-column: 1 / -1; }
+.dash-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.dash-section-header h3 { margin: 0; font-size: 14px; color: var(--text); }
+.dash-section-header p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+.link-quiet { font-size: 12px; color: var(--accent); }
+.link-quiet:hover { text-decoration: underline; }
+
+.dash-empty { color: var(--muted); font-size: 12px; border: 1px dashed var(--border); border-radius: 9px; padding: 16px; }
+
+.dash-task-list { display: flex; flex-direction: column; gap: 2px; }
+.dash-task-row { display: grid; grid-template-columns: 12px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 6px; border-radius: 7px; font-size: 12.5px; color: var(--text); }
+.dash-task-row:hover { background: var(--hover); }
+.dash-task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-task-project { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+.dash-project-list { display: flex; flex-direction: column; gap: 14px; }
+.dash-project-row { display: block; border-radius: 9px; padding: 10px 4px; }
+.dash-project-row:hover { background: var(--hover); }
+.dash-project-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12.5px; }
+.dash-project-name { font-weight: 600; color: var(--text); }
+.dash-project-bar { height: 5px; border-radius: 999px; background: var(--secondary-bg, #1d2128); overflow: hidden; }
+.dash-project-bar-fill { height: 100%; background: linear-gradient(90deg,var(--accent),var(--accent-strong, #8e82ff)); }
+.dash-project-meta { margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+/* CSS charts use the accessible task data directly; they remain useful without a chart dependency. */
+.dash-status-chart { display: grid; gap: 12px; }
+.dash-status-row { display: grid; grid-template-columns: 112px minmax(70px, 1fr) 52px; align-items: center; gap: 10px; }
+.dash-status-label { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--text); font-size: 12px; }
+.dash-status-track { height: 7px; overflow: hidden; border-radius: 999px; background: var(--secondary-bg, #20252e); }
+.dash-status-fill { display: block; height: 100%; min-width: 0; border-radius: inherit; transition: width .2s ease; }
+.dash-status-fill.status-backlog { background: #697586; }
+.dash-status-fill.status-todo { background: #8290a3; }
+.dash-status-fill.status-in_progress { background: #8b7cff; }
+.dash-status-fill.status-in_review { background: #d6aa58; }
+.dash-status-fill.status-done { background: #55c78a; }
+.dash-status-fill.status-cancelled { background: #a86973; }
+.dash-status-value { display: flex; justify-content: flex-end; gap: 5px; color: var(--text); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dash-status-value small { color: var(--muted); font-size: 10px; }
+
+.dash-activity-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 8px; height: 158px; padding-top: 13px; }
+.dash-activity-day { display: grid; grid-template-rows: 16px 1fr 15px; justify-items: center; min-width: 0; height: 100%; }
+.dash-activity-count { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.dash-activity-column { display: flex; align-items: flex-end; width: 100%; min-height: 80px; border-bottom: 1px solid var(--border); }
+.dash-activity-column span { display: block; width: 100%; min-height: 0; border-radius: 5px 5px 2px 2px; background: var(--accent); }
+.dash-activity-label { margin-top: 6px; color: var(--muted); font-size: 10px; text-transform: uppercase; }
+
+.health-badge { font-size: 10px; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+.health-healthy { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); }
+.health-at-risk { color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, transparent); }
+.health-needs-attention { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+.overview-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.overview-details div { min-width: 0; }
+.overview-details dt { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.overview-details dd { margin: 5px 0 0; color: var(--text); font-size: 12px; overflow-wrap: anywhere; }
+
+.overview-organization-list { display: grid; gap: 5px; }
+.overview-organization-row { display: flex; align-items: center; gap: 10px; border-radius: 8px; padding: 9px 6px; color: var(--text); }
+.overview-organization-row:hover { background: var(--hover); }
+.overview-organization-row b, .overview-organization-row small { display: block; }
+.overview-organization-row b { font-size: 12px; }
+.overview-organization-row small { margin-top: 3px; color: var(--muted); font-size: 10px; text-transform: capitalize; }
+.overview-organization-mark { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--surface-strong); color: var(--accent); font-size: 11px; font-weight: 700; }
+
+@media (max-width: 900px) {
+  .dashboard { padding: 20px 16px 40px; }
+  .dash-stat-row { grid-template-columns: repeat(2, 1fr); }
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-section--wide { grid-column: auto; }
+  .overview-details { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .dashboard { padding: 20px 14px 40px; }
+  .dash-stat { padding: 13px; }
+  .dash-stat-value { font-size: 21px; }
+  .dash-task-row { grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; }
+  .dash-task-project { display: none; }
+  .dash-status-row { grid-template-columns: 88px minmax(50px, 1fr) 42px; gap: 7px; }
+  .dash-status-label { font-size: 11px; }
+  .dash-project-top { gap: 8px; }
+}

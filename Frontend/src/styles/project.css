@@ -1,0 +1,50 @@
+/* =========================================================
+   REMOVE LINK UNDERLINE FROM PROJECT CARDS
+   ========================================================= */
+
+.workspace-card,
+.workspace-card:hover,
+.workspace-card:focus,
+.workspace-card:active {
+  text-decoration: none;
+  color: inherit;
+}
+
+.workspace-card-main,
+.workspace-card-main:hover,
+.workspace-card-main:focus,
+.workspace-card-main:active {
+  text-decoration: none;
+  color: inherit;
+}
+
+
+/* Project organization name */
+.workspace-card .project-organization {
+  text-decoration: none;
+}
+
+
+/* Project title */
+.workspace-card .card-body h3 {
+  text-decoration: none;
+}
+
+
+/* Project description */
+.workspace-card .card-body p {
+  text-decoration: none;
+}
+
+
+/* Card meta */
+.workspace-card .card-meta,
+.workspace-card .card-meta span {
+  text-decoration: none;
+}
+
+
+/* Arrow */
+.workspace-card .card-arrow {
+  text-decoration: none;
+}

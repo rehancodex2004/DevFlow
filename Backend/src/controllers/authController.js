@@ -1,0 +1,384 @@
+// bcryptjs password ko securely hash aur compare karne ke liye use hota hai
+const bcrypt = require("bcryptjs");
+
+// jsonwebtoken JWT token create karne ke liye use hota hai
+const jwt = require("jsonwebtoken");
+
+// PostgreSQL database ke saath connection ke liye pool import kar rahe hain
+const pool = require("../config/database");
+
+// Response ko standard format mein bhejne ke liye helper functions
+const { ok, created, fail } = require("../utils/response");
+
+const emailRegex =
+  /^(?!.*\.\.)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
+
+// Ye rules signup aur API dono jagah password ko mazboot rakhte hain.
+const passwordRequirements = [
+  { test: (value) => value.length >= 8, message: "at least 8 characters" },
+  { test: (value) => /[A-Z]/.test(value), message: "one uppercase letter" },
+  { test: (value) => /[a-z]/.test(value), message: "one lowercase letter" },
+  { test: (value) => /[0-9]/.test(value), message: "one number" },
+  { test: (value) => /[!@#$%^&*(),.?\":{}|<>_\-\\[\]~`+/;'=]/.test(value), message: "one special character" },
+];
+
+// Jo password rules poore na hon unki saaf list return karte hain.
+function getPasswordErrors(password) {
+  return passwordRequirements
+    .filter((requirement) => !requirement.test(password))
+    .map((requirement) => requirement.message);
+}
+
+// ======================================================
+// MAKE JWT TOKEN
+// ======================================================
+
+// Ye function user ke liye JWT token banata hai
+function makeToken(user) {
+  return jwt.sign(
+    // Token ke andar ye information store hogi
+    {
+      id: user.id,
+      role: user.role,
+    },
+
+    // JWT secret .env file se aa raha hai
+    process.env.JWT_SECRET,
+
+    // Token 7 days baad expire ho jayega
+    {
+      expiresIn: "7d",
+    },
+  );
+}
+
+// ======================================================
+// SIGNUP / REGISTER
+// ======================================================
+
+async function signup(req, res) {
+  try {
+    // Frontend se name, email aur password receive kar rahe hain
+    const { name, email, password } = req.body;
+
+    // ==================================================
+    // REQUIRED FIELDS VALIDATION
+    // ==================================================
+
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
+      return fail(
+        res,
+        400,
+        "Name, email and password are required.",
+      );
+    }
+
+    // ==================================================
+    // NORMALIZE EMAIL
+    // ==================================================
+
+    // Email ko trim aur lowercase kar rahe hain
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // ==================================================
+    // STRICT EMAIL VALIDATION
+    // ==================================================
+
+    // This validation checks:
+    //
+    // - Exactly one @
+    // - No spaces
+    // - No consecutive dots
+    // - Email cannot start with a dot
+    // - Email cannot end with a dot before @
+    // - Domain must contain a dot
+    // - Domain cannot start/end with a hyphen
+    // - Valid domain extension is required
+    //
+    // Examples rejected:
+    //
+    // john..doe@gmail.com
+    // john.doe.@gmail.com
+    // john doe@gmail.com
+    // john@@gmail.com
+    // john@gmail..com
+
+    if (!emailRegex.test(normalizedEmail)) {
+      return fail(
+        res,
+        400,
+        "Please enter a valid email address.",
+      );
+    }
+
+    // ==================================================
+    // PASSWORD VALIDATION
+    // ==================================================
+
+    // Password security requirements
+    //
+    // - At least 8 characters
+    // - One uppercase letter
+    // - One lowercase letter
+    // - One number
+    // - One special character
+
+    const passwordErrors = getPasswordErrors(password);
+
+    if (passwordErrors.length > 0) {
+      return fail(
+        res,
+        400,
+        `Password must include ${passwordErrors.join(", ")}.`,
+      );
+    }
+
+    // ==================================================
+    // EXISTING EMAIL CHECK
+    // ==================================================
+
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [normalizedEmail],
+    );
+
+    // Agar email already exist karti hai
+    if (existing.rowCount) {
+      return fail(
+        res,
+        409,
+        "Email is already registered.",
+      );
+    }
+
+    // ==================================================
+    // PASSWORD HASH
+    // ==================================================
+
+    // Password ko database mein plain text mein save nahi karna
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // ==================================================
+    // CREATE USER
+    // ==================================================
+
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password)
+       VALUES ($1, $2, $3)
+       RETURNING id, name, email, role, status, created_at`,
+
+      [
+        name.trim(),
+        normalizedEmail,
+        hashedPassword,
+      ],
+    );
+
+    const user = result.rows[0];
+
+    // ==================================================
+    // SUCCESS RESPONSE
+    // ==================================================
+
+    return created(
+      res,
+      {
+        user,
+        token: makeToken(user),
+      },
+      "Account created successfully.",
+    );
+
+  } catch (error) {
+    // Unexpected error ko console mein show karenge
+    console.error("Signup error:", error);
+
+    return fail(
+      res,
+      500,
+      "Unable to create account.",
+    );
+  }
+}
+
+// ======================================================
+// LOGIN
+// ======================================================
+
+async function login(req, res) {
+  try {
+    // Frontend se email aur password receive kar rahe hain
+    const { email, password } = req.body;
+
+    // Check kar rahe hain ke email/password provided hain
+    if (!email?.trim() || !password) {
+      return fail(
+        res,
+        400,
+        "Email and password are required.",
+      );
+    }
+
+    // Database mein email ke according user search kar rahe hain
+    const result = await pool.query(
+      `SELECT id, name, email, password, role, status
+       FROM users
+       WHERE email = $1`,
+
+      [email.trim().toLowerCase()],
+    );
+
+    // Agar user nahi mila
+    if (!result.rowCount) {
+      return fail(
+        res,
+        401,
+        "Invalid email or password.",
+      );
+    }
+
+    // Database se user data nikal rahe hain
+    const user = result.rows[0];
+
+    // Check kar rahe hain ke account active hai ya nahi
+    if (user.status !== "active") {
+      return fail(
+        res,
+        403,
+        "This account is not active.",
+      );
+    }
+
+    // User ke entered password ko database ke hashed password
+    // ke saath compare kar rahe hain
+    const matches = await bcrypt.compare(
+      password,
+      user.password,
+    );
+
+    // Agar password wrong hai
+    if (!matches) {
+      return fail(
+        res,
+        401,
+        "Invalid email or password.",
+      );
+    }
+
+    // Response bhejne se pehle password remove kar rahe hain
+    delete user.password;
+
+    // Login successful response
+    return ok(
+      res,
+      {
+        user,
+
+        // Login ke baad JWT token create kar rahe hain
+        token: makeToken(user),
+      },
+
+      "Login successful.",
+    );
+
+  } catch (error) {
+    // Unexpected error ko console mein show karenge
+    console.error("Login error:", error);
+
+    return fail(
+      res,
+      500,
+      "Unable to login.",
+    );
+  }
+}
+
+// ======================================================
+// CURRENT USER / ME
+// ======================================================
+
+async function me(req, res) {
+  try {
+    // Database se current logged-in user ko find kar rahe hain
+    // req.user.id authentication middleware se aata hai
+    const result = await pool.query(
+      `SELECT id, name, email, role, status, created_at
+       FROM users
+       WHERE id = $1`,
+
+      [req.user.id],
+    );
+
+    // Agar user database mein nahi mila
+    if (!result.rowCount) {
+      return fail(
+        res,
+        404,
+        "User not found.",
+      );
+    }
+
+    // Current user ka data return kar rahe hain
+    return ok(
+      res,
+      result.rows[0],
+    );
+
+  } catch (error) {
+    // Error console mein show karenge
+    console.error("Current user error:", error);
+
+    return fail(
+      res,
+      500,
+      "Unable to load current user.",
+    );
+  }
+}
+
+// ======================================================
+// UPDATE CURRENT USER
+// ======================================================
+// The authenticated identity always comes from the JWT; callers can only edit
+// their own display name and cannot alter another account or their system role.
+async function updateMe(req, res) {
+  try {
+    const name = String(req.body?.name || "").trim();
+
+    if (!name || name.length > 120) {
+      return fail(res, 400, "Name is required and must be 120 characters or fewer.");
+    }
+
+    const result = await pool.query(
+      `UPDATE users SET name = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, name, email, role, status, created_at, updated_at`,
+      [name, req.user.id],
+    );
+
+    if (!result.rowCount) return fail(res, 404, "User not found.");
+    return ok(res, result.rows[0], "Profile updated.");
+  } catch (error) {
+    console.error("Update profile error:", error);
+    return fail(res, 500, "Unable to update profile.");
+  }
+}
+
+// ======================================================
+// EXPORT FUNCTIONS
+// ======================================================
+
+// In functions ko doosri files mein use karne ke liye export kar rahe hain
+module.exports = {
+  signup,
+  login,
+  me,
+  updateMe,
+};

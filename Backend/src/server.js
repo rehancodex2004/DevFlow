@@ -1,0 +1,293 @@
+// Load .env variables
+require("dotenv").config();
+
+
+// ===============================
+// IMPORTS
+// ===============================
+
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const { Server } = require("socket.io");
+
+
+// Routes
+const knowledgeRoutes = require("./routes/knowledgeRoutes");
+const authRoutes = require("./routes/authRoutes");
+const organizationRoutes = require("./routes/organizationRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const commentRoutes = require("./routes/commentRoutes");
+const aiRoutes = require("./routes/aiRoutes");
+
+// ===============================
+// CREATE SERVER
+// ===============================
+
+const app = express();
+
+// Create HTTP server
+// Socket.IO will use this server too.
+const httpServer = http.createServer(app);
+
+
+// ===============================
+// SOCKET.IO
+// ===============================
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173"
+  }
+});
+
+
+// ===============================
+// SOCKET AUTHENTICATION
+// ===============================
+
+// This runs when a user tries to connect
+// to Socket.IO.
+io.use((socket, next) => {
+
+  try {
+
+    // Get JWT token from frontend
+    const token = socket.handshake.auth?.token;
+
+    // No token
+    if (!token) {
+      return next(new Error("Authentication required"));
+    }
+
+    // Check JWT token
+    const user = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    // Save user information inside socket
+    socket.user = user;
+
+    // Allow connection
+    next();
+
+  } catch (error) {
+
+    // Token is invalid
+    next(new Error("Invalid authentication token"));
+  }
+});
+
+
+// ===============================
+// USER CONNECTED
+// ===============================
+
+io.on("connection", (socket) => {
+
+  console.log(
+    "Socket connected:",
+    socket.id
+  );
+
+  console.log(
+    "User:",
+    socket.user
+  );
+
+
+  // =============================
+  // USER ROOM
+  // =============================
+
+  // Every user gets their own room.
+  //
+  // Example:
+  // user id = 5
+  //
+  // Room:
+  // user:5
+
+  if (socket.user?.id) {
+
+    socket.join(
+      `user:${socket.user.id}`
+    );
+
+  }
+
+
+  // =============================
+  // JOIN TASK ROOM
+  // =============================
+
+  socket.on("join_task", (taskId) => {
+
+    socket.join(`task:${taskId}`);
+
+    console.log(
+      `User joined task:${taskId}`
+    );
+
+  });
+
+
+  // =============================
+  // LEAVE TASK ROOM
+  // =============================
+
+  socket.on("leave_task", (taskId) => {
+
+    socket.leave(`task:${taskId}`);
+
+    console.log(
+      `User left task:${taskId}`
+    );
+
+  });
+
+
+  // =============================
+  // USER DISCONNECTED
+  // =============================
+
+  socket.on("disconnect", () => {
+
+    console.log(
+      "Socket disconnected:",
+      socket.id
+    );
+
+  });
+
+});
+
+
+// Make Socket.IO available
+// inside controllers using:
+//
+// req.app.get("io")
+
+app.set("io", io);
+
+
+// ===============================
+// PORT
+// ===============================
+
+const PORT = Number(
+  process.env.PORT || 5001
+);
+
+
+// ===============================
+// EXPRESS MIDDLEWARE
+// ===============================
+
+// Allow frontend → backend
+app.use(
+  cors({
+    origin:
+      process.env.FRONTEND_URL ||
+      "http://localhost:5173"
+  })
+);
+
+
+// Allow JSON request body
+app.use(express.json());
+
+
+// ===============================
+// HEALTH CHECK
+// ===============================
+
+app.get("/api/health", (req, res) => {
+
+  res.json({
+    success: true,
+    message: "DevFlow API is running."
+  });
+
+});
+
+
+// ===============================
+// ROUTES
+// ===============================
+
+app.use(
+  "/api/auth",
+  authRoutes
+);
+
+app.use(
+  "/api/organizations",
+  organizationRoutes
+);
+
+app.use(
+  "/api/projects",
+  projectRoutes
+);
+
+app.use(
+  "/api/tasks",
+  taskRoutes
+);
+
+app.use(
+  "/api/comments",
+  commentRoutes
+);
+// new add for AI analysis of task
+app.use("/api/ai", aiRoutes);
+app.use("/api/knowledge", knowledgeRoutes);
+// ===============================
+// 404
+// ===============================
+
+app.use((req, res) => {
+
+  res.status(404).json({
+    success: false,
+    message: "Route not found."
+  });
+
+});
+
+
+// ===============================
+// ERROR HANDLER
+// ===============================
+
+app.use((error, req, res, next) => {
+
+  console.error(
+    "Server error:",
+    error
+  );
+
+  res.status(500).json({
+    success: false,
+    message: "Internal server error."
+  });
+
+});
+
+
+
+// ===============================
+// START SERVER
+// ===============================
+
+httpServer.listen(PORT, () => {
+
+  console.log(
+    `DevFlow backend running on http://localhost:${PORT}`
+  );
+
+});
