@@ -204,7 +204,10 @@
 
   cursor: pointer;
 
-  z-index: 9999;
+  /* Sits above ordinary page content but below every modal/overlay layer
+     (command palette, task/org/status modals, AI create modal, mobile
+     nav) so it never floats on top of dialogs or covers their actions. */
+  z-index: 45;
 
   box-shadow:
     0 8px 25px var(--shadow),

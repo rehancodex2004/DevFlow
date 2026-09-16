@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export default function SelectField({
@@ -18,7 +18,7 @@ export default function SelectField({
 
   const selectedOption = options.find((option) => String(option.value) === String(value));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     function updatePosition() {
       const trigger = triggerRef.current;
       if (!trigger) return;

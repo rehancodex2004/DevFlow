@@ -563,8 +563,8 @@
 }
 
 .role-tag-list {
-  /* display: flex; */
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
 }
 
@@ -573,12 +573,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-width: min(250px, 100%);
+  min-width: 0;
   padding: 14px 15px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
-  margin-bottom: 12px;
 }
 
 .role-tag-row__main {
@@ -973,7 +972,8 @@
     margin-top: 16px;
   }
 
-  .member-grid {
+  .member-grid,
+  .role-tag-list {
     grid-template-columns: 1fr;
   }
 

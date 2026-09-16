@@ -1,7 +1,6 @@
 @media (max-width: 1050px) {
   .create-panel { grid-template-columns: 1fr 1fr; }
   .task-create { grid-template-columns: 1fr 1fr; }
-  .kanban { grid-template-columns: repeat(5, 220px); }
 }
 
 /* Keep native select controls above tablet layout layers. */

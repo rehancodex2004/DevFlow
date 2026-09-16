@@ -1071,10 +1071,6 @@
   .page {
     padding: 28px 24px 50px;
   }
-
-  .kanban {
-    grid-template-columns: repeat(6, 220px);
-  }
 }
 
 @media (max-width: 700px) {
@@ -1114,10 +1110,6 @@
     width: 100%;
   }
 
-  .kanban {
-    grid-template-columns: repeat(6, minmax(250px, 1fr));
-  }
-
   .task-modal-overlay {
     padding: 12px;
   }
@@ -1145,10 +1137,6 @@
 
   .ai-task-header h2 {
     font-size: 19px;
-  }
-
-  .kanban {
-    grid-template-columns: repeat(6, 250px);
   }
 }
 /* =========================================================
