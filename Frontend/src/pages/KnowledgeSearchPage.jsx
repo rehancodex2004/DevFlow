@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
+import SelectField from "../components/ui/SelectField";
 // .empty-state styling lives here (Projects.jsx relies on the
 // same class without importing it, so this page imports it
 // explicitly to make sure the empty states are actually styled).
@@ -119,31 +120,22 @@ export default function KnowledgeSearchPage() {
 
       <div className="section-card">
         <form className="inline-form project-form" onSubmit={handleSearch}>
-          <select
+          <SelectField
             value={organizationId}
             onChange={(e) => setOrganizationId(e.target.value)}
-            required
-          >
-            <option value="">Organization</option>
-            {orgs.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
+            placeholder="Organization"
+            aria-label="Organization"
+            options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+          />
 
-          <select
+          <SelectField
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             disabled={!organizationId || !projects.length}
-          >
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+            placeholder="All projects"
+            aria-label="Project"
+            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+          />
 
           <input
             type="text"

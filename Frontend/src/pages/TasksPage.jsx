@@ -6,6 +6,7 @@ import TaskBoard from "../components/TaskBoard";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Modal from "../components/ui/Modal";
+import SelectField from "../components/ui/SelectField";
 import { TASK_WORKFLOW } from "../constants/taskWorkflow";
 
 import "../styles/task.css";
@@ -515,6 +516,19 @@ export default function TasksPage() {
     setSelectedAssigneeId("");
 
     setAiTask(null);
+
+    if (!projectId) {
+      setMembers([]);
+    } else {
+      try {
+        const memberResponse = await api.projectMembers(projectId);
+        setMembers(getArrayData(memberResponse));
+      } catch (err) {
+        console.error("Project members error:", err);
+        setError(err?.message || "Unable to load project members.");
+        setMembers([]);
+      }
+    }
 
     const statusOptions = await fetchProjectStatusOptions(projectId);
 
@@ -1321,43 +1335,33 @@ export default function TasksPage() {
                   <div className="ai-field">
                     <label>Organization</label>
 
-                    <select
+                    <SelectField
                       value={selectedOrgId}
                       onChange={handleOrganizationChange}
                       disabled={aiLoading || busy}
-                    >
-                      <option value="">Select organization</option>
-
-                      {orgs.map((org) => (
-                        <option key={org.id} value={org.id}>
-                          {org.name}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Select organization"
+                      aria-label="Organization"
+                      options={orgs.map((org) => ({ value: org.id, label: org.name }))}
+                    />
                   </div>
 
                   <div className="ai-field">
                     <label>Project</label>
 
-                    <select
+                    <SelectField
                       value={selectedProjectId}
                       onChange={handleProjectChange}
                       disabled={!selectedOrgId || aiLoading || busy}
-                    >
-                      <option value="">
-                        {!selectedOrgId
+                      placeholder={
+                        !selectedOrgId
                           ? "Select organization first"
                           : projects.length === 0
                             ? "No projects available"
-                            : "Select project"}
-                      </option>
-
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
+                            : "Select project"
+                      }
+                      aria-label="Project"
+                      options={projects.map((project) => ({ value: project.id, label: project.name }))}
+                    />
                   </div>
                 </div>
 
@@ -1385,26 +1389,20 @@ export default function TasksPage() {
                     <span>Optional</span>
                   </label>
 
-                  <select
+                  <SelectField
                     value={selectedAssigneeId}
                     onChange={handleAssigneeChange}
                     disabled={!selectedProjectId || aiLoading || busy}
-                  >
-                    <option value="">Leave unassigned</option>
-
-                    {members.map((member) => {
+                    placeholder="Leave unassigned"
+                    aria-label="Assignee"
+                    options={members.map((member) => {
                       const memberId = getMemberId(member);
-
-                      return (
-                        <option key={memberId} value={memberId}>
-                          {member.name ||
-                            member.user_name ||
-                            member.email ||
-                            `User ${memberId}`}
-                        </option>
-                      );
+                      return {
+                        value: memberId,
+                        label: member.name || member.user_name || member.email || `User ${memberId}`,
+                      };
                     })}
-                  </select>
+                  />
                 </div>
               </div>
 
@@ -1603,7 +1601,7 @@ export default function TasksPage() {
                       <div className="ai-field">
                         <label>Priority</label>
 
-                        <select
+                        <SelectField
                           value={aiForm.priority}
                           onChange={(e) =>
                             setAiForm((previous) => ({
@@ -1612,21 +1610,20 @@ export default function TasksPage() {
                             }))
                           }
                           disabled={busy}
-                        >
-                          <option value="low">Low</option>
-
-                          <option value="medium">Medium</option>
-
-                          <option value="high">High</option>
-
-                          <option value="urgent">Urgent</option>
-                        </select>
+                          aria-label="Priority"
+                          options={[
+                            { value: "low", label: "Low" },
+                            { value: "medium", label: "Medium" },
+                            { value: "high", label: "High" },
+                            { value: "urgent", label: "Urgent" },
+                          ]}
+                        />
                       </div>
 
                       <div className="ai-field">
                         <label>Status</label>
 
-                        <select
+                        <SelectField
                           value={aiForm.status}
                           onChange={(e) =>
                             setAiForm((previous) => ({
@@ -1635,13 +1632,9 @@ export default function TasksPage() {
                             }))
                           }
                           disabled={busy}
-                        >
-                          {aiStatusOptions.map(([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
+                          aria-label="Status"
+                          options={aiStatusOptions.map(([value, label]) => ({ value, label }))}
+                        />
                       </div>
                     </div>
 
@@ -1818,7 +1811,7 @@ export default function TasksPage() {
               <div className="task-form-group">
                 <label>Priority</label>
 
-                <select
+                <SelectField
                   value={editForm.priority}
                   onChange={(e) =>
                     setEditForm((previous) => ({
@@ -1827,21 +1820,20 @@ export default function TasksPage() {
                     }))
                   }
                   disabled={busy}
-                >
-                  <option value="low">Low</option>
-
-                  <option value="medium">Medium</option>
-
-                  <option value="high">High</option>
-
-                  <option value="urgent">Urgent</option>
-                </select>
+                  aria-label="Priority"
+                  options={[
+                    { value: "low", label: "Low" },
+                    { value: "medium", label: "Medium" },
+                    { value: "high", label: "High" },
+                    { value: "urgent", label: "Urgent" },
+                  ]}
+                />
               </div>
 
               <div className="task-form-group">
                 <label>Status</label>
 
-                <select
+                <SelectField
                   value={editForm.status}
                   onChange={(e) =>
                     setEditForm((previous) => ({
@@ -1850,13 +1842,9 @@ export default function TasksPage() {
                     }))
                   }
                   disabled={busy}
-                >
-                  {editStatusOptions.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                  aria-label="Status"
+                  options={editStatusOptions.map(([value, label]) => ({ value, label }))}
+                />
               </div>
 
               <div className="task-modal-actions">

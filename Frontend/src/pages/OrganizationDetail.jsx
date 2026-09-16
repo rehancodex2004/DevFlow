@@ -7,6 +7,7 @@ import EmptyState from "../components/ui/EmptyState";
 import InlineNotice from "../components/ui/InlineNotice";
 import Modal from "../components/ui/Modal";
 import SectionCard from "../components/ui/SectionCard";
+import SelectField from "../components/ui/SelectField";
 import "../styles/organization.css";
 
 /** Manages an organization and shows its members and projects in one place. */
@@ -197,15 +198,17 @@ export default function OrganizationDetail() {
               </label>
               <label className="ui-field">
                 Role
-                <select
+                <SelectField
                   value={memberForm.role}
                   onChange={(event) =>
                     setMemberForm({ ...memberForm, role: event.target.value })
                   }
-                >
-                  <option value="member">Member</option>
-                  <option value="admin">Administrator</option>
-                </select>
+                  aria-label="Role"
+                  options={[
+                    { value: "member", label: "Member" },
+                    { value: "admin", label: "Administrator" },
+                  ]}
+                />
               </label>
               <Button type="submit" loading={busy}>
                 Add member

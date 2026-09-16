@@ -879,7 +879,7 @@
   }
 }
 
-@media (max-width: 340px) {
+@media (max-width: 480px) {
   .ui-modal__footer {
     align-items: stretch;
     flex-direction: column-reverse;

@@ -19,7 +19,13 @@ function toDate(value) {
 
 function isOverdue(task) {
   const dueDate = toDate(task.due_date);
-  return Boolean(dueDate) && task.status !== "done" && task.status !== "cancelled" && dueDate < new Date();
+  if (!dueDate || task.status === "done" || task.status === "cancelled") return false;
+  // Compare against the start of today, not the live instant — a task due
+  // "today" (due_date parses to local midnight) should count as due-today,
+  // not overdue, until the day has actually passed.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return dueDate < startOfToday;
 }
 
 function isDueToday(task) {

@@ -23,7 +23,8 @@ export default function SelectField({
       const trigger = triggerRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
-      const left = rect.left + window.scrollX;
+      const width = Math.min(rect.width, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(rect.left + window.scrollX, window.scrollX + window.innerWidth - width - 8));
 
       // Estimate desired menu height (each option ~44px including padding)
       const optionHeight = 44;
@@ -51,7 +52,7 @@ export default function SelectField({
         }
       }
 
-      setMenuStyle({ left, top, width: rect.width, maxHeight });
+      setMenuStyle({ left, top, width, maxHeight });
     }
 
     if (open) {
@@ -106,7 +107,7 @@ export default function SelectField({
       className="ui-select__menu"
       role="listbox"
       aria-label={ariaLabel}
-      style={menuStyle ? { position: "absolute", left: `${menuStyle.left}px`, top: `${menuStyle.top}px`, width: `${menuStyle.width}px`, maxHeight: `${menuStyle.maxHeight}px`, overflowY: "auto", zIndex: 20000 } : { zIndex: 20000 }}
+      style={{ position: "absolute", left: `${menuStyle.left}px`, top: `${menuStyle.top}px`, width: `${menuStyle.width}px`, maxHeight: `${menuStyle.maxHeight}px`, overflowY: "auto", zIndex: 20000 }}
     >
       {required && placeholder && (
         <button type="button" className={`ui-select__option ${!value ? "is-selected" : ""}`} onClick={() => selectOption("")} role="option" aria-selected={!value}>
@@ -146,7 +147,7 @@ export default function SelectField({
         <span className="ui-select__chevron" aria-hidden="true" />
       </button>
 
-      {open && createPortal(menu, document.body)}
+      {open && menuStyle && createPortal(menu, document.body)}
     </div>
   );
 }
