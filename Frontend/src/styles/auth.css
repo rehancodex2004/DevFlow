@@ -132,6 +132,32 @@
   letter-spacing: -0.035em;
 }
 
+/* Signup ka brand aur heading ab card mein zyada saaf nazar aate hain.
+   Must stay ABOVE the @media(max-width:600px/380px) blocks further down —
+   those set smaller mobile-specific h1/brand sizes, and being unconditional
+   rules of identical selector specificity, source order decides the winner
+   at every width where both are active. Placing this after those media
+   queries silently cancelled them out (h1 always rendered ~30px+ even at
+   380px). */
+.auth-card .brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  font-size: 22px;
+}
+
+.auth-card .brand strong {
+  font-size: 20px;
+}
+
+.auth-card .brand span {
+  font-size: 12px;
+}
+
+.auth-card h1 {
+  font-size: clamp(30px, 5vw, 38px);
+}
+
 
 /* =========================================================
    DESCRIPTION
@@ -400,26 +426,6 @@
     height: 46px;
   }
 
-}
-
-/* Signup ka brand aur heading ab card mein zyada saaf nazar aate hain. */
-.auth-card .brand-mark {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  font-size: 22px;
-}
-
-.auth-card .brand strong {
-  font-size: 20px;
-}
-
-.auth-card .brand span {
-  font-size: 12px;
-}
-
-.auth-card h1 {
-  font-size: clamp(30px, 5vw, 38px);
 }
 
 /* Password input ke andar eye button ke liye jagah rakhi gayi hai. */

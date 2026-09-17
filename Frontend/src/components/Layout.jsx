@@ -154,7 +154,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="main-content">
+      <main className={`main-content ${isAiOpen ? "main-content--ai-open" : ""}`}>
         <header className="topbar">
           <button
             className="menu-btn"

@@ -108,6 +108,48 @@ export function AuthProvider({ children }) {
 
 
   // ======================================================
+  // RESYNC ACROSS BROWSER TABS
+  // ======================================================
+
+  // If the token changes in another tab (login as a different
+  // user, or logout there), this tab's `user` state would
+  // otherwise stay stale while api.js silently starts using the
+  // new token for every request. Listen for the storage event
+  // (fires only in OTHER tabs, never the one that made the
+  // change) and resync.
+  useEffect(() => {
+
+    function handleStorageChange(event) {
+
+      // Ignore changes to unrelated localStorage keys.
+      if (event.key !== "cms_token") {
+        return;
+      }
+
+      // Token was removed in another tab → log out here too.
+      if (!event.newValue) {
+        setUser(null);
+        return;
+      }
+
+      // Token changed to a new value → re-check who it belongs to,
+      // same call used on initial app load.
+      api.me()
+        .then((response) => {
+          setUser(response.data);
+        })
+        .catch(() => {
+          setUser(null);
+        });
+    }
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+
+  }, []);
+
+
+  // ======================================================
   // LOGIN FUNCTION
   // ======================================================
 

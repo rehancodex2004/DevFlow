@@ -10,6 +10,20 @@
   pointer-events: auto;
 }
 
+/* On desktop, .main-content--ai-open (layout.css) already reflows page
+   content out from under the docked panel, so the full-viewport overlay no
+   longer needs to (and must not) block clicks on the rest of the page.
+   The panel itself keeps pointer-events:auto below, so the assistant stays
+   fully usable. Below this width the panel takes over near-full-screen
+   (see the max-width:700px block further down), where blocking is correct. */
+@media (min-width: 1000px) {
+  .ai-global-overlay {
+    position: static;
+    inset: auto;
+    pointer-events: none;
+  }
+}
+
 .ai-global-panel {
   position: fixed;
   top: 16px;

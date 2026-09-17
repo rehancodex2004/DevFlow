@@ -89,38 +89,7 @@
    ========================================================= */
 
 .project-summary {
-  display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 12px;
-  margin: 18px 0 24px;
-}
-
-.project-summary > div {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 8px;
-  min-height: 82px;
-  padding: 16px 18px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: 0 10px 22px var(--shadow);
-}
-
-.project-summary > div span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .11em;
-  text-transform: uppercase;
-}
-
-.project-summary > div b {
-  color: var(--text);
-  font-size: 16px;
-  font-weight: 800;
 }
 
 .project-detail-card {
@@ -582,12 +551,14 @@
 
 .role-tag-row__main {
   flex: 1;
+  min-width: 0;
 }
 
 .role-tag-row__main b {
   display: block;
   color: var(--text);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .role-tag-row__main p {
@@ -947,10 +918,6 @@
 }
 
 @media (max-width: 700px) {
-  .project-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .project-create-form__row--two,
   .project-create-form__row--three,
   .project-create-form__row--bottom,
@@ -1012,15 +979,6 @@
 }
 
 @media (max-width: 480px) {
-  .project-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .project-summary > div {
-    min-width: 0;
-    width: 100%;
-  }
-
   .project-detail-page .project-detail-header,
   .project-detail-page .page-header {
     align-items: flex-start;
