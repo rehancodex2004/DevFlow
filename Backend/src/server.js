@@ -45,7 +45,10 @@ const httpServer = http.createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173"
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
   }
 });
 
@@ -200,9 +203,18 @@ const PORT = Number(
 // Allow frontend → backend
 app.use(
   cors({
-    origin:
-      process.env.FRONTEND_URL ||
-      "http://localhost:5173"
+    origin(origin, callback) {
+      const configuredOrigin = process.env.FRONTEND_URL;
+      const localOrigin =
+        origin === "http://localhost:5173" ||
+        origin === "http://127.0.0.1:5173";
+
+      if (!origin || origin === configuredOrigin || localOrigin) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin is not allowed by CORS."));
+    },
   })
 );
 
