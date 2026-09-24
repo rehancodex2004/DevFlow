@@ -109,7 +109,15 @@ export default function SelectField({
       className="ui-select__menu"
       role="listbox"
       aria-label={ariaLabel}
-      style={{ position: "absolute", left: `${menuStyle.left}px`, top: `${menuStyle.top}px`, width: `${menuStyle.width}px`, maxHeight: `${menuStyle.maxHeight}px`, overflowY: "auto", zIndex: 20000 }}
+      style={menuStyle ? {
+        position: "absolute",
+        left: `${menuStyle.left}px`,
+        top: `${menuStyle.top}px`,
+        width: `${menuStyle.width}px`,
+        maxHeight: `${menuStyle.maxHeight}px`,
+        overflowY: "auto",
+        zIndex: 20000,
+      } : undefined}
     >
       {required && placeholder && (
         <button type="button" className={`ui-select__option ${!value ? "is-selected" : ""}`} onClick={() => selectOption("")} role="option" aria-selected={!value}>
