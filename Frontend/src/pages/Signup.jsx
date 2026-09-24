@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const PASSWORD_REQUIREMENTS = [
@@ -49,12 +49,14 @@ function PasswordVisibilityIcon({ visible }) {
 export default function Signup() {
   const { signup, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/organizations";
 
   useEffect(() => {
     if (user) {
-      navigate("/overview", { replace: true });
+      navigate(redirect, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirect]);
 
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState({});
@@ -99,7 +101,7 @@ export default function Signup() {
     setBusy(true);
     try {
       await signup(form);
-      navigate("/organizations");
+      navigate(redirect);
     } catch (requestError) {
       setError(requestError.message || "Unable to create account.");
     } finally {

@@ -123,18 +123,25 @@ export default function KnowledgeSearchPage() {
           <SelectField
             value={organizationId}
             onChange={(e) => setOrganizationId(e.target.value)}
-            placeholder="Organization"
+            required
             aria-label="Organization"
-            options={orgs.map((o) => ({ value: o.id, label: o.name }))}
+            placeholder="Organization"
+            options={orgs.map((organization) => ({
+              value: organization.id,
+              label: organization.name,
+            }))}
           />
 
           <SelectField
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             disabled={!organizationId || !projects.length}
-            placeholder="All projects"
             aria-label="Project"
-            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+            placeholder="All projects"
+            options={projects.map((project) => ({
+              value: project.id,
+              label: project.name,
+            }))}
           />
 
           <input

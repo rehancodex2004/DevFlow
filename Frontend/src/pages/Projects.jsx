@@ -44,13 +44,16 @@ export default function Projects() {
   }, []);
 
   const adminOrganizations = useMemo(
-    () => organizations.filter((organization) => organization.my_role === "admin"),
+    () => organizations.filter((organization) => ["owner", "admin"].includes(organization.my_role)),
     [organizations],
   );
 
-  const canManageProject = (project) => organizations.some(
-    (organization) => Number(organization.id) === Number(project.organization_id)
-      && organization.my_role === "admin",
+  const canManageProject = (project) => Boolean(
+    project?.my_project_role === "project_admin"
+    || organizations.some(
+      (organization) => Number(organization.id) === Number(project.organization_id)
+        && organization.my_role === "owner",
+    ),
   );
 
   const createProject = async (event) => {
@@ -123,13 +126,13 @@ export default function Projects() {
       {error && <InlineNotice>{error}</InlineNotice>}
 
       {adminOrganizations.length > 0 && (
-        <SectionCard className="ui-split-card">
+        <SectionCard className="ui-split-card projects-create-card">
           <div>
             <p className="eyebrow">Admin action</p>
             <h2>Start a project</h2>
             <p className="muted">Create a home for a goal, then organize its work in one place.</p>
           </div>
-          <form className="ui-form-row ui-form-row--project" onSubmit={createProject}>
+          <form className="ui-form-row ui-form-row--project projects-create-form" onSubmit={createProject}>
             <label className="ui-field">
               Organization
               <SelectField

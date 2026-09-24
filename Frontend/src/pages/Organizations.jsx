@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import Button from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -14,6 +14,7 @@ const EMPTY_FORM = { name: "", description: "" };
 
 /** Workspace list and organization settings are intentionally kept together. */
 export default function Organizations() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState(null);
@@ -122,13 +123,23 @@ export default function Organizations() {
       {items.length ? (
         <div className="ui-entity-grid">
           {items.map((organization) => {
-            const isAdmin = organization.my_role === "admin";
+            const isOwner = organization.my_role === "owner";
+            const isAdmin = isOwner || organization.my_role === "admin";
             return (
-              <SectionCard className="ui-entity-card" key={organization.id} as="article">
+              <SectionCard
+                className="ui-entity-card"
+                key={organization.id}
+                as="article"
+                onClick={(event) => {
+                  if (!event.target.closest("a, button")) {
+                    navigate(`/organizations/${organization.id}`);
+                  }
+                }}
+              >
                 <Link className="ui-entity-card__main" to={`/organizations/${organization.id}`} aria-label={`Open ${organization.name}`}>
                   <span className="ui-entity-card__icon">{organization.name?.[0]?.toUpperCase() || "O"}</span>
                   <div className="ui-entity-card__body">
-                    <div className="ui-entity-card__label">{isAdmin ? "Administrator" : "Member"}</div>
+                    <div className="ui-entity-card__label">{isOwner ? "Owner" : isAdmin ? "Administrator" : "User"}</div>
                     <h2>{organization.name}</h2>
                     <p>{organization.description || "No description yet."}</p>
                     <div className="ui-entity-card__meta">
@@ -137,10 +148,28 @@ export default function Organizations() {
                     </div>
                   </div>
                 </Link>
-                {isAdmin && (
+                {isOwner && (
                   <div className="ui-entity-card__actions">
-                    <Button variant="secondary" onClick={() => setEditing({ ...organization })} disabled={busy}>Edit</Button>
-                    <Button variant="danger" onClick={() => setDeleteTarget(organization)} disabled={busy}>Delete</Button>
+                    <Button
+                      variant="secondary"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditing({ ...organization });
+                      }}
+                      disabled={busy}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setDeleteTarget(organization);
+                      }}
+                      disabled={busy}
+                    >
+                      Delete
+                    </Button>
                   </div>
                 )}
               </SectionCard>

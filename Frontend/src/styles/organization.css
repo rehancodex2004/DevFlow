@@ -244,6 +244,15 @@
   margin: 20px 0;
 }
 
+.organization-admin-grid,
+.organization-content-grid {
+  margin-bottom: 20px;
+}
+
+.organization-admin-action-card .ui-select__trigger {
+  min-height: 38px;
+}
+
 .organization-detail-item {
   display: flex;
   flex-direction: column;
@@ -293,6 +302,79 @@
   flex: none;
   max-width: 100%;
 }
+
+.member-status,
+.invitation-row > div span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.member-role-control {
+  flex: none;
+  width: 110px;
+}
+
+.member-role-control .ui-select__trigger {
+  min-height: 34px;
+  padding: 7px 8px;
+  font-size: 11px;
+}
+
+.member-details {
+  display: grid;
+  flex-basis: 100%;
+  gap: 4px;
+  margin: 1px 0 0 45px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.invitation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.invitation-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.invitation-row:first-child {
+  border-top: 0;
+}
+
+.invitation-row > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.invitation-row b {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.invitation-status {
+  flex: none;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.invitation-status--pending { color: #e3c879; }
+.invitation-status--accepted { color: #7fd49a; }
+.invitation-status--expired,
+.invitation-status--revoked { color: #e58a8a; }
 
 /* =========================================================
    COMPACT LIST (organization projects)
@@ -389,6 +471,15 @@
   .member-item .role-pill {
     margin-left: auto;
   }
+
+  .invitation-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .invitation-row > div {
+    flex-basis: calc(100% - 12px);
+  }
 }
 
 
@@ -422,6 +513,19 @@
   .member-item .organization-remove-member {
     margin-left: auto;
   }
+
+  .member-role-control {
+    width: calc(100% - 45px);
+    margin-left: 45px;
+  }
+
+  .member-role-control .ui-select {
+    width: 100%;
+  }
+
+  .member-details {
+    margin-left: 45px;
+  }
 }
 
 
@@ -454,5 +558,8 @@
   .modal-actions .btn {
     width: 100%;
   }
-}
 
+  .member-details {
+    margin-left: 0;
+  }
+}

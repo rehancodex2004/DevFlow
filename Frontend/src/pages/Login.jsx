@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function PasswordVisibilityIcon({ visible }) {
@@ -18,12 +18,14 @@ function PasswordVisibilityIcon({ visible }) {
 export default function Login() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/overview";
 
   useEffect(() => {
     if (user) {
-      navigate("/overview", { replace: true });
+      navigate(redirect, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirect]);
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
@@ -37,7 +39,7 @@ export default function Login() {
 
     try {
       await login(form);
-      navigate("/overview");
+      navigate(redirect);
     } catch (requestError) {
       setError(requestError.message || "Unable to sign in.");
     } finally {
@@ -95,6 +97,7 @@ export default function Login() {
           {busy ? "Signing in..." : "Sign in"}
         </button>
 
+        <p className="auth-switch"><Link to="/forgot-password">Forgot password?</Link></p>
         <p className="auth-switch">Don't have an account? <Link to="/signup">Create one</Link></p>
       </form>
     </div>

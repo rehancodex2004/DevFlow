@@ -110,6 +110,8 @@ router.delete("/:id", controller.deleteOrganization);
 //
 // 5 = organization ID
 router.get("/:id/members", controller.listMembers);
+router.get("/:id/invitations", controller.listInvitations);
+router.delete("/:id/invitations/:invitationId", controller.revokeInvitation);
 
 
 // POST /:id/members

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import { api } from "../services/api";
@@ -34,7 +34,7 @@ function getDefaultStatus(statuses) {
 }
 
 function isManager(project) {
-  return project?.my_org_role === "admin" || project?.my_project_role === "project_admin";
+  return project?.my_org_role === "owner" || project?.my_project_role === "project_admin";
 }
 
 /** Project workspace with a project-owned workflow and discipline tags. */
@@ -58,6 +58,7 @@ export default function ProjectDetail() {
   const [roleDraft, setRoleDraft] = useState(EMPTY_ROLE);
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [expandedMemberId, setExpandedMemberId] = useState(null);
+  const taskTitleRef = useRef(null);
 
   const loadProject = async () => {
     try {
@@ -108,6 +109,12 @@ export default function ProjectDetail() {
       }
       return next;
     });
+  };
+
+  const startTaskInStatus = (status) => {
+    setForm((current) => ({ ...current, status }));
+    document.querySelector(".project-create-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    requestAnimationFrame(() => taskTitleRef.current?.focus());
   };
 
   const createTask = async (event) => {
@@ -271,6 +278,7 @@ export default function ProjectDetail() {
               <label className="ui-field">
                 <span>Task title</span>
                 <input
+                  ref={taskTitleRef}
                   value={form.title}
                   onChange={(event) => updateTaskForm("title", event.target.value)}
                   placeholder={`What needs to be done in ${project?.name || "this project"}?`}
@@ -364,6 +372,7 @@ export default function ProjectDetail() {
           onDragOver={(event, status) => { if (!canManage) return; event.preventDefault(); if (draggingId) setDragOver(status); }}
           onDragLeave={(event) => { if (event.currentTarget === event.target) setDragOver(null); }}
           onDrop={(event, status) => { event.preventDefault(); if (canManage) moveTask(draggingId, status); setDraggingId(null); setDragOver(null); }}
+          onAddTask={canManage ? startTaskInStatus : undefined}
           boardHeaderActions={canManage ? (
             <button type="button" className="kanban-status-manager" onClick={() => { setStatusDraft(EMPTY_STATUS); setStatusModalOpen(true); }} disabled={busy}>
               <span className="kanban-status-manager-icon">☰</span>

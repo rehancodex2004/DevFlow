@@ -30,10 +30,24 @@ async function assertTaskAccess(userId, taskId) {
       t.id AS task_id,
       p.id AS project_id,
       o.id AS organization_id,
+      t.assignee_id,
       EXISTS (
         SELECT 1 FROM organization_members om
-        WHERE om.organization_id = p.organization_id AND om.user_id = $1
-      ) AS is_org_member
+        WHERE om.organization_id = p.organization_id
+          AND om.user_id = $1
+          AND om.role = 'owner'
+      ) AS is_org_owner,
+      EXISTS (
+        SELECT 1 FROM project_members pm
+        WHERE pm.project_id = p.id
+          AND pm.user_id = $1
+          AND pm.role = 'project_admin'
+      ) AS is_project_admin,
+      EXISTS (
+        SELECT 1 FROM project_members pm
+        WHERE pm.project_id = p.id
+          AND pm.user_id = $1
+      ) AS is_project_member
     FROM tasks t
     JOIN projects p ON p.id = t.project_id
     JOIN organizations o ON o.id = p.organization_id
@@ -50,7 +64,9 @@ async function assertTaskAccess(userId, taskId) {
 
   const row = result.rows[0];
 
-  if (!row.is_org_member) {
+  const canViewTask = row.is_org_owner || row.is_project_admin || (row.is_project_member && Number(row.assignee_id) === Number(userId));
+
+  if (!canViewTask) {
     const error = new Error("You do not have access to this task.");
     error.status = 403;
     throw error;
@@ -240,8 +256,8 @@ async function assertProjectManager(userId, projectId) {
       EXISTS (
         SELECT 1 FROM organization_members om
         JOIN projects p ON p.organization_id = om.organization_id
-        WHERE p.id = $1 AND om.user_id = $2 AND om.role = 'admin'
-      ) AS is_org_admin,
+        WHERE p.id = $1 AND om.user_id = $2 AND om.role = 'owner'
+      ) AS is_org_owner,
       EXISTS (
         SELECT 1 FROM project_members pm
         WHERE pm.project_id = $1 AND pm.user_id = $2 AND pm.role = 'project_admin'
@@ -249,7 +265,7 @@ async function assertProjectManager(userId, projectId) {
     [projectId, userId],
   );
 
-  if (!result.rows[0]?.is_org_admin && !result.rows[0]?.is_project_admin) {
+  if (!result.rows[0]?.is_org_owner && !result.rows[0]?.is_project_admin) {
     const error = new Error("Project administrator permission required.");
     error.status = 403;
     throw error;
@@ -355,7 +371,7 @@ async function createTask({
 // Security:
 // 1. taskId + projectId must match the real task.
 // 2. userId must belong to the project's organization.
-// 3. userId must be an organization admin.
+// 3. userId must be the organization owner or project admin.
 // 4. Assignee must belong to the same organization.
 // 5. Only fields supplied by the Agent are changed.
 // ============================================================
@@ -411,15 +427,8 @@ async function updateTask({
         FROM organization_members
         WHERE organization_id = $1
           AND user_id = $2
-      ) AS is_org_member,
-
-      EXISTS (
-        SELECT 1
-        FROM organization_members
-        WHERE organization_id = $1
-          AND user_id = $2
-          AND role = 'admin'
-      ) AS is_org_admin,
+          AND role = 'owner'
+      ) AS is_org_owner,
 
       EXISTS (
         SELECT 1
@@ -427,18 +436,21 @@ async function updateTask({
         WHERE project_id = $3
           AND user_id = $2
           AND role = 'project_admin'
-      ) AS is_project_admin
+      ) AS is_project_admin,
+
+      EXISTS (
+        SELECT 1
+        FROM project_members
+        WHERE project_id = $3
+          AND user_id = $2
+      ) AS is_project_member
     `,
     [organizationId, userId, projectId]
   );
 
   const access = accessResult.rows[0];
 
-  // ----------------------------------------------------------
-  // User is not organization member
-  // ----------------------------------------------------------
-
-  if (!access.is_org_member) {
+  if (!access.is_org_owner && !access.is_project_member) {
     const error = new Error(
       "You do not have access to this task."
     );
@@ -448,11 +460,7 @@ async function updateTask({
     throw error;
   }
 
-  // ----------------------------------------------------------
-  // User is not organization admin
-  // ----------------------------------------------------------
-
-  if (!access.is_org_admin && !access.is_project_admin) {
+  if (!access.is_org_owner && !access.is_project_admin) {
     const error = new Error(
       "Project administrator permission required."
     );
@@ -616,7 +624,7 @@ async function updateTask({
 // Security:
 // 1. Task must belong to the authorized project.
 // 2. User must belong to the organization.
-// 3. User must be organization admin.
+// 3. User must be the organization owner or project admin.
 // ============================================================
 
 async function deleteTask({
@@ -653,7 +661,7 @@ async function deleteTask({
   const organizationId = task.organization_id;
 
   // ==========================================================
-  // CHECK ORGANIZATION ADMIN
+  // CHECK OWNER/PROJECT-ADMIN PERMISSION
   // ==========================================================
 
   const accessResult = await pool.query(
@@ -671,8 +679,8 @@ async function deleteTask({
         FROM organization_members
         WHERE organization_id = $1
           AND user_id = $2
-          AND role = 'admin'
-      ) AS is_org_admin,
+          AND role = 'owner'
+      ) AS is_org_owner,
 
       EXISTS (
         SELECT 1
@@ -702,10 +710,10 @@ async function deleteTask({
   }
 
   // ==========================================================
-  // USER MUST BE ORGANIZATION ADMIN
+  // USER MUST BE ORG OWNER OR PROJECT ADMIN
   // ==========================================================
 
-  if (!access.is_org_admin && !access.is_project_admin) {
+  if (!access.is_org_owner && !access.is_project_admin) {
     const error = new Error(
       "Project administrator permission required."
     );

@@ -1,6 +1,24 @@
 // Import jsonwebtoken package.
 // It is used to verify JWT tokens.
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const pool = require("../config/database");
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+async function isTokenRevoked(token) {
+  const result = await pool.query(
+    `SELECT 1
+     FROM revoked_auth_tokens
+     WHERE token_hash = $1
+       AND expires_at > NOW()
+     LIMIT 1`,
+    [hashToken(token)],
+  );
+  return result.rowCount > 0;
+}
 
 
 // ======================================================
@@ -9,7 +27,7 @@ const jwt = require("jsonwebtoken");
 
 // This middleware checks whether the user is logged in
 // by checking the JWT token sent in the request.
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
 
   // Get the Authorization header from the request.
   //
@@ -62,6 +80,13 @@ function requireAuth(req, res, next) {
       process.env.JWT_SECRET
     );
 
+    if (await isTokenRevoked(token)) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication token has been revoked.",
+      });
+    }
+
 
     // Save the user's information inside req.user.
     //
@@ -71,6 +96,8 @@ function requireAuth(req, res, next) {
       id: Number(payload.id),
       role: payload.role
     };
+    req.authToken = token;
+    req.authPayload = payload;
 
 
     // Token is valid.
@@ -78,15 +105,22 @@ function requireAuth(req, res, next) {
     next();
 
 
-  } catch {
+  } catch (error) {
+    if (error?.name === "JsonWebTokenError" || error?.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired token.",
+      });
+    }
 
+    console.error("Authentication check failed:", error);
     // Token is invalid or expired.
     // Stop the request and return 401 Unauthorized.
-    return res.status(401).json({
+    return res.status(500).json({
 
       success: false,
 
-      message: "Invalid or expired token."
+      message: "Unable to verify authentication."
 
     });
   }
@@ -132,5 +166,7 @@ function requireSystemAdmin(req, res, next) {
 // so they can be used in route files.
 module.exports = {
   requireAuth,
-  requireSystemAdmin
+  requireSystemAdmin,
+  isTokenRevoked,
+  hashToken,
 };

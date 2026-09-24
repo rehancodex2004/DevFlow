@@ -24,6 +24,7 @@ const {
 // ============================================================
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const { extractMemoriesFromConversation, deleteMemory, forgetMemory, getRelevantMemories, isExplicitMemoryCommand, isForgetMemoryCommand } = require("./memoryService");
 
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
 
@@ -867,6 +868,31 @@ async function runTaskAgent({
     throw new Error("Message is required.");
   }
 
+  if (isExplicitMemoryCommand(message)) {
+    const explicitMemories = await extractMemoriesFromConversation({
+      userId,
+      message: message.trim(),
+      taskId,
+      projectId,
+      organizationId,
+    });
+    return {
+      answer: explicitMemories.length ? "I remembered that for this task." : "I could not save that memory.",
+      memoriesCreated: explicitMemories.length,
+    };
+  }
+
+  if (isForgetMemoryCommand(message)) {
+    const forgotten = await forgetMemory({
+      userId,
+      request: message,
+      taskId,
+      projectId,
+      organizationId,
+    });
+    return { answer: forgotten ? "I forgot that memory." : "I could not find that memory." };
+  }
+
   // ----------------------------------------------------------
   // GET CURRENT TASK
   // ----------------------------------------------------------
@@ -916,6 +942,14 @@ async function runTaskAgent({
     confirmed,
   };
 
+  const memories = await getRelevantMemories({
+    userId,
+    query: message.trim(),
+    taskId,
+    projectId,
+    organizationId,
+  });
+
   // ----------------------------------------------------------
   // MESSAGES
   // ----------------------------------------------------------
@@ -925,6 +959,13 @@ async function runTaskAgent({
       role: "system",
 
       content: systemPrompt,
+    },
+
+    {
+      role: "system",
+      content: `RELEVANT LONG-TERM MEMORY:\n${memories.length
+        ? memories.map((memory) => `- (${memory.type}) ${memory.content}`).join("\n")
+        : "(none)"}`,
     },
 
     ...history.slice(-6).map((m) => ({
@@ -971,8 +1012,16 @@ async function runTaskAgent({
       !assistantMessage.tool_calls ||
       assistantMessage.tool_calls.length === 0
     ) {
+      void extractMemoriesFromConversation({
+        userId,
+        message: message.trim(),
+        taskId,
+        projectId,
+        organizationId,
+      }).catch((error) => console.error("Background agent memory extraction failed:", error.message));
       return {
         answer: assistantMessage.content || "I could not generate an answer.",
+        memoriesUsed: memories.length,
       };
     }
 

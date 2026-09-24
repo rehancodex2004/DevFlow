@@ -17,6 +17,7 @@ export default function TaskBoard({
   onDragLeave,
   onDrop,
   renderTaskActions,
+  onAddTask,
   showProject = false,
   emptyMessage = "Drop tasks here",
   fixedHeight = true,
@@ -113,7 +114,24 @@ export default function TaskBoard({
                       <span className="status-dot" />
                       <b>{status.label}</b>
                     </span>
-                    <span className="column-count">{columnTasks.length}</span>
+                    <span className="column-title-actions">
+                      {onAddTask && (
+                        <button
+                          type="button"
+                          className="kanban-add-task"
+                          aria-label={`Add task to ${status.label}`}
+                          title={`Add task to ${status.label}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onAddTask(statusKey);
+                          }}
+                        >
+                          +
+                        </button>
+                      )}
+                      <span className="column-count">{columnTasks.length}</span>
+                    </span>
                   </header>
 
                   <div className="kanban-column-body">
@@ -136,7 +154,28 @@ export default function TaskBoard({
                       </article>
                     ))}
 
-                    {columnTasks.length === 0 && <div className="kanban-empty"><div className="kanban-empty-icon">+</div><span>{emptyMessage}</span></div>}
+                    {columnTasks.length === 0 && (
+                      <div className="kanban-empty">
+                        {onAddTask ? (
+                          <button
+                            type="button"
+                            className="kanban-empty-icon"
+                            aria-label={`Add task to ${status.label}`}
+                            title={`Add task to ${status.label}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              onAddTask(statusKey);
+                            }}
+                          >
+                            +
+                          </button>
+                        ) : (
+                          <div className="kanban-empty-icon">+</div>
+                        )}
+                        <span>{emptyMessage}</span>
+                      </div>
+                    )}
                   </div>
                 </section>
               );

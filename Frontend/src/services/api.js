@@ -128,6 +128,23 @@ export const api = {
       body: JSON.stringify(data)
     }),
 
+  requestPasswordReset: (data) =>
+    request("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  resetPassword: (data) =>
+    request("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  logout: () =>
+    request("/auth/logout", {
+      method: "POST",
+    }),
+
 
   // Get currently logged-in user.
   //
@@ -243,6 +260,28 @@ export const api = {
         method: "DELETE"
       }
     ),
+
+  getInvitation: (token) =>
+    request(`/invitations/${encodeURIComponent(token)}`),
+
+  acceptInvitation: (token) =>
+    request(`/invitations/${encodeURIComponent(token)}/accept`, {
+      method: "POST",
+    }),
+
+  acceptInvitationAndCreateAccount: (token, data) =>
+    request(`/invitations/${encodeURIComponent(token)}/accept-and-create-account`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  invitations: (id) =>
+    request(`/organizations/${id}/invitations`),
+
+  revokeInvitation: (id, invitationId) =>
+    request(`/organizations/${id}/invitations/${invitationId}`, {
+      method: "DELETE",
+    }),
 
 
 
@@ -579,6 +618,31 @@ export const api = {
     request(`/ai/global/chat/end`, {
       method: "POST",
     }),
+
+  memories: (filters = {}) => {
+    const params = new URLSearchParams(
+      Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ""),
+    );
+    return request(`/ai/memories${params.toString() ? `?${params}` : ""}`);
+  },
+
+  createMemory: (data) =>
+    request("/ai/memories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateMemory: (id, data) =>
+    request(`/ai/memories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteMemory: (id) =>
+    request(`/ai/memories/${id}`, { method: "DELETE" }),
+
+  searchMemories: (query, scope = {}) =>
+    request(`/ai/memories/search?${new URLSearchParams({ query, ...scope })}`),
 
 // ======================================================
 // RECENT AI CHATS

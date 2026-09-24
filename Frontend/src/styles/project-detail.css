@@ -325,6 +325,10 @@
   align-items: center;
 }
 
+.project-create-card > * {
+  min-width: 0;
+}
+
 .project-create-intro {
   padding: 8px 0;
 }
@@ -363,11 +367,11 @@
 }
 
 .project-create-form__row--three {
-  grid-template-columns: minmax(280px, 1.5fr) minmax(160px, .7fr) minmax(180px, .8fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, .7fr) minmax(0, .8fr);
 }
 
 .project-create-form__row--bottom {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(150px, .65fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, .65fr);
   align-items: end;
 }
 
@@ -384,7 +388,8 @@
 }
 
 .project-create-form__action .ui-button {
-  min-width: 142px;
+  width: 100%;
+  min-width: 0;
   margin: 0;
   align-self: end;
 }
@@ -430,6 +435,10 @@
   margin-top: 24px;
 }
 
+.project-member-card > * {
+  min-width: 0;
+}
+
 .project-member-intro h2 {
   margin: 8px 0 10px;
   font-size: clamp(24px, 2vw, 30px);
@@ -437,9 +446,15 @@
 
 .project-member-form-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(160px, .8fr) minmax(120px, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(0, .8fr);
   align-items: end;
   gap: 12px;
+  min-width: 0;
+}
+
+.project-member-form-grid > .project-member-action {
+  grid-column: 2;
+  justify-self: end;
 }
 
 .project-member-action {
@@ -447,12 +462,18 @@
   align-items: flex-end;
   align-self: end;
   min-height: 58px;
+  min-width: 0;
 }
 
 .project-member-action .ui-button,
 .project-detail-page .ui-split-card > .ui-button {
   margin: 0;
   align-self: end;
+}
+
+.project-member-action .ui-button {
+  width: auto;
+  min-width: 0;
 }
 
 .team-members-card .section-header {
@@ -907,7 +928,7 @@
   }
 
   .project-create-form__action,
-  .project-member-action {
+  .project-member-form-grid > .project-member-action {
     grid-column: 1 / -1;
   }
 

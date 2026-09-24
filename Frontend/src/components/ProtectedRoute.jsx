@@ -12,6 +12,7 @@ import { Navigate } from "react-router-dom";
 // - loading → tells us whether authentication
 //             checking is still in progress
 import { useAuth } from "../context/AuthContext";
+import BlockedSession from "./BlockedSession";
 
 
 // ProtectedRoute component.
@@ -28,7 +29,7 @@ export default function ProtectedRoute({ children }) {
 
   // Get user and loading information
   // from AuthContext.
-  const { user, loading } = useAuth();
+  const { user, loading, sessionLocked } = useAuth();
 
 
   // ======================================================
@@ -47,6 +48,10 @@ export default function ProtectedRoute({ children }) {
         Loading workspace...
       </div>
     );
+  }
+
+  if (sessionLocked) {
+    return <BlockedSession />;
   }
 
 

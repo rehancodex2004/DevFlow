@@ -31,7 +31,7 @@ CROSS JOIN (
       ('done', 'Done', '#59d68c', 4),
       ('cancelled', 'Cancelled', '#ef8e99', 5)
 ) AS defaults(key, label, color, position)
-ON CONFLICT (project_id, key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status_id BIGINT;
 

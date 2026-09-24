@@ -11,6 +11,7 @@ const {
   getGlobalKnowledgeContext,
 } = require("./retrievalService");
 const pool = require("../config/database");
+const { getRelevantMemories } = require("./memoryService");
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
@@ -291,6 +292,7 @@ OUT_OF_SCOPE
 // ============================================================
 
 async function taskChat({
+  userId,
   taskId,
   projectId,
   organizationId,
@@ -367,6 +369,8 @@ async function taskChat({
       // Continue with task facts if semantic search fails.
       semanticHits = [];
     }
+
+    const memories = await getRelevantMemories({ userId, query: message, taskId, projectId, organizationId });
   }
 
   // ----------------------------------------------------------
@@ -378,6 +382,9 @@ ${formatFacts(facts)}
 
 RELATED KNOWLEDGE (semantic search results, may or may not be relevant):
 ${formatSemanticHits(semanticHits)}
+
+RELEVANT LONG-TERM MEMORY:
+${memories.length ? memories.map((memory) => `- [memory:${memory.id}] (${memory.type}) ${memory.content}`).join("\n") : "(none)"}
 `.trim();
 
   // ----------------------------------------------------------
@@ -435,12 +442,19 @@ ${formatSemanticHits(semanticHits)}
       label: `${h.source_type} #${h.source_id}`,
       similarity: Number(Number(h.similarity).toFixed(3)),
     })),
+    ...memories.map((memory) => ({
+      type: "memory",
+      id: memory.id,
+      label: memory.content,
+      similarity: memory.similarity,
+    })),
   ];
 
   return {
     answer,
     sources,
     intent,
+    memoriesUsed: memories.length,
   };
 }
 
@@ -515,6 +529,8 @@ async function globalChat({ userId, message, history = [], context = null }) {
   );
 
   const pageContext = await getPageContext(userId, context);
+  const pageMemoryScope = await getPageMemoryScope(userId, context);
+  const memories = await getRelevantMemories({ userId, query: message, ...pageMemoryScope });
 
   const contextBlock = `
 ${formatGlobalFacts(facts)}
@@ -527,6 +543,9 @@ ${formatKeywordHits(keywordHits)}
 
 RELATED KNOWLEDGE (semantic search results, may or may not be relevant):
 ${formatSemanticHits(semanticHits)}
+
+RELEVANT LONG-TERM MEMORY:
+${memories.length ? memories.map((memory) => `- [memory:${memory.id}] (${memory.type}) ${memory.content}`).join("\n") : "(none)"}
 `.trim();
 
   const messages = [
@@ -566,11 +585,18 @@ ${formatSemanticHits(semanticHits)}
       label: `${h.source_type} #${h.source_id}`,
       similarity: Number(Number(h.similarity).toFixed(3)),
     })),
+    ...memories.map((memory) => ({
+      type: "memory",
+      id: memory.id,
+      label: memory.content,
+      similarity: memory.similarity,
+    })),
   ];
 
   return {
     answer,
     sources,
+    memoriesUsed: memories.length,
   };
 }
 
@@ -579,6 +605,59 @@ ${formatSemanticHits(semanticHits)}
  * object supplied by the browser. The requested entity must be visible to the
  * authenticated user before it is added to the AI prompt.
  */
+async function getPageMemoryScope(userId, context) {
+  const entityId = Number(context?.entityId);
+  if (!Number.isInteger(entityId)) return {};
+
+  if (context.entityType === "task") {
+    const result = await pool.query(
+      `SELECT t.id AS task_id, p.id AS project_id, p.organization_id
+       FROM tasks t
+       JOIN projects p ON p.id = t.project_id
+       JOIN organization_members om ON om.organization_id = p.organization_id
+       WHERE t.id = $1 AND om.user_id = $2`,
+      [entityId, userId],
+    );
+    return result.rowCount
+      ? {
+        taskId: result.rows[0].task_id,
+        projectId: result.rows[0].project_id,
+        organizationId: result.rows[0].organization_id,
+      }
+      : {};
+  }
+
+  if (context.entityType === "project") {
+    const result = await pool.query(
+      `SELECT p.id AS project_id, p.organization_id
+       FROM projects p
+       JOIN organization_members om ON om.organization_id = p.organization_id
+       WHERE p.id = $1 AND om.user_id = $2`,
+      [entityId, userId],
+    );
+    return result.rowCount
+      ? {
+        projectId: result.rows[0].project_id,
+        organizationId: result.rows[0].organization_id,
+      }
+      : {};
+  }
+
+  if (context.entityType === "organization") {
+    const result = await pool.query(
+      `SELECT organization_id
+       FROM organization_members
+       WHERE organization_id = $1 AND user_id = $2`,
+      [entityId, userId],
+    );
+    return result.rowCount
+      ? { organizationId: result.rows[0].organization_id }
+      : {};
+  }
+
+  return {};
+}
+
 async function getPageContext(userId, context) {
   const entityType = context?.entityType;
   const entityId = Number(context?.entityId);

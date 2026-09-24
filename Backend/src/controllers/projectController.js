@@ -8,6 +8,10 @@ const pool = require("../config/database");
 const { ok, created, fail } = require("../utils/response");
 const knowledgeBaseService = require("../services/knowledgeBaseService");
 const { seedProjectWorkflow } = require("./workflowController");
+const {
+  requireOrganizationMember,
+  requireOrganizationAdminOrOwner,
+} = require("../middleware/authorizationMiddleware");
 
 function reindexProjectInBackground(projectId) {
   knowledgeBaseService
@@ -22,30 +26,7 @@ function reindexProjectInBackground(projectId) {
 // This function checks whether a user is an ADMIN
 // of a particular organization.
 async function requireOrgAdmin(userId, orgId) {
-  // Search organization_members table.
-  // We need a record where:
-  // 1. organization_id matches
-  // 2. user_id matches
-  // 3. role must be admin
-  const result = await pool.query(
-    `SELECT 1 FROM organization_members 
-     WHERE organization_id = $1 AND user_id = $2 AND role = 'admin'`,
-    [orgId, userId],
-  );
-
-  // If no matching record is found,
-  // user does not have admin permission.
-  if (!result.rowCount) {
-    // Create an error object.
-    const e = new Error("Organization administrator permission required.");
-
-    // HTTP 403 means "Forbidden".
-    // User is authenticated but does not have permission.
-    e.status = 403;
-
-    // Send error to the catch block.
-    throw e;
-  }
+  return requireOrganizationAdminOrOwner(userId, orgId);
 }
 
 // ============================================================
@@ -55,26 +36,7 @@ async function requireOrgAdmin(userId, orgId) {
 // This function checks whether a user
 // is a member of an organization.
 async function requireOrgMember(userId, orgId) {
-  // Search organization_members table
-  // for this user and organization.
-  const result = await pool.query(
-    `SELECT 1 FROM organization_members 
-     WHERE organization_id = $1 AND user_id = $2`,
-    [orgId, userId],
-  );
-
-  // If no record is found,
-  // user is not a member.
-  if (!result.rowCount) {
-    // Create an error.
-    const e = new Error("You are not a member of this organization.");
-
-    // 403 = Forbidden.
-    e.status = 403;
-
-    // Send error to catch block.
-    throw e;
-  }
+  return requireOrganizationMember(userId, orgId);
 }
 
 // ============================================================
@@ -117,7 +79,8 @@ async function listProjects(req, res) {
       // belongs to this organization.
       await requireOrgMember(req.user.id, organizationId);
 
-      // Get projects of this organization.
+      // Organization owners have access to every project in the org. Regular
+      // organization admins only see projects they are explicitly assigned to.
       const result = await pool.query(
         `
         SELECT
@@ -150,6 +113,10 @@ async function listProjects(req, res) {
           ON pm.project_id = p.id
 
         WHERE p.organization_id = $1
+          AND (
+            om.role = 'owner'
+            OR viewer_project.user_id IS NOT NULL
+          )
 
         GROUP BY
           p.id,
@@ -206,6 +173,9 @@ async function listProjects(req, res) {
 
       LEFT JOIN project_members pm
         ON pm.project_id = p.id
+
+      WHERE om.role = 'owner'
+         OR viewer_project.user_id IS NOT NULL
 
       GROUP BY
         p.id,
@@ -402,7 +372,7 @@ async function getProject(req, res) {
       -- Organization admins
       LEFT JOIN organization_members admin_member
         ON admin_member.organization_id = p.organization_id
-       AND admin_member.role = 'admin'
+       AND admin_member.role IN ('owner', 'admin')
 
 
       -- Admin user information
@@ -411,6 +381,10 @@ async function getProject(req, res) {
 
 
       WHERE p.id = $1
+        AND (
+          viewer.role = 'owner'
+          OR viewer_project.user_id IS NOT NULL
+        )
 
 
       GROUP BY
@@ -465,9 +439,22 @@ async function updateProject(req, res) {
     // If project does not exist.
     if (!project.rowCount) return fail(res, 404, "Project not found.");
 
-    // Check whether logged-in user
-    // is admin of the project's organization.
-    await requireOrgAdmin(req.user.id, project.rows[0].organization_id);
+    // Project owners and project admins can update the project. Organization
+    // admins do not get automatic project management rights.
+    const access = await pool.query(
+      `SELECT EXISTS (
+          SELECT 1 FROM organization_members om
+          WHERE om.organization_id = $1 AND om.user_id = $2 AND om.role = 'owner'
+        ) AS is_owner,
+        EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = $3 AND pm.user_id = $2 AND pm.role = 'project_admin'
+        ) AS is_project_admin`,
+      [project.rows[0].organization_id, req.user.id, id],
+    );
+    if (!(access.rows[0]?.is_owner || access.rows[0]?.is_project_admin)) {
+      return fail(res, 403, "Project administrator permission required.");
+    }
 
     // Get updated data from frontend.
     //
@@ -523,8 +510,23 @@ async function deleteProject(req, res) {
     // If project does not exist.
     if (!project.rowCount) return fail(res, 404, "Project not found.");
 
-    // Only organization admin can delete project.
-    await requireOrgAdmin(req.user.id, project.rows[0].organization_id);
+    // Organization owners can manage any project in the org. Project admins may
+    // also delete the project they administer, but org admins do not receive
+    // automatic project-level management rights.
+    const access = await pool.query(
+      `SELECT EXISTS (
+          SELECT 1 FROM organization_members om
+          WHERE om.organization_id = $1 AND om.user_id = $2 AND om.role = 'owner'
+        ) AS is_owner,
+        EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = $3 AND pm.user_id = $2 AND pm.role = 'project_admin'
+        ) AS is_project_admin`,
+      [project.rows[0].organization_id, req.user.id, id],
+    );
+    if (!(access.rows[0]?.is_owner || access.rows[0]?.is_project_admin)) {
+      return fail(res, 403, "Project administrator permission required.");
+    }
 
     // Delete project from database.
     await pool.query("DELETE FROM projects WHERE id = $1", [id]);
@@ -571,8 +573,23 @@ async function listMembers(req, res) {
     // Get organization ID
     const organizationId = project.rows[0].organization_id;
 
-    // Check that current logged-in user belongs to organization
-    await requireOrgMember(req.user.id, organizationId);
+    // Users can view project member lists only when they can access the project.
+    // Organization owners can always view project members; project members and
+    // project admins can also view them once they're assigned to the project.
+    const access = await pool.query(
+      `SELECT EXISTS (
+          SELECT 1 FROM organization_members om
+          WHERE om.organization_id = $1 AND om.user_id = $2 AND om.role = 'owner'
+        ) AS is_owner,
+        EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = $3 AND pm.user_id = $2
+        ) AS is_project_member`,
+      [organizationId, req.user.id, id],
+    );
+    if (!(access.rows[0]?.is_owner || access.rows[0]?.is_project_member)) {
+      return fail(res, 403, "Project access required.");
+    }
 
     // Get only members assigned to THIS project
     const result = await pool.query(
@@ -620,8 +637,23 @@ async function addMember(req, res) {
     // Project does not exist.
     if (!project.rowCount) return fail(res, 404, "Project not found.");
 
-    // Only organization admin can add project members.
-    await requireOrgAdmin(req.user.id, project.rows[0].organization_id);
+    // Only the organization owner or an assigned project admin can manage the
+    // project member list. Organization admins do not gain automatic project
+    // management rights across every project.
+    const access = await pool.query(
+      `SELECT EXISTS (
+          SELECT 1 FROM organization_members om
+          WHERE om.organization_id = $1 AND om.user_id = $2 AND om.role = 'owner'
+        ) AS is_owner,
+        EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = $3 AND pm.user_id = $2 AND pm.role = 'project_admin'
+        ) AS is_project_admin`,
+      [project.rows[0].organization_id, req.user.id, id],
+    );
+    if (!(access.rows[0]?.is_owner || access.rows[0]?.is_project_admin)) {
+      return fail(res, 403, "Project administrator permission required.");
+    }
 
     // Resolve a registered account by email rather than accepting an opaque
     // user id from the browser.
@@ -719,8 +751,23 @@ async function removeMember(req, res) {
     // Project doesn't exist.
     if (!project.rowCount) return fail(res, 404, "Project not found.");
 
-    // Only organization admin can remove project members.
-    await requireOrgAdmin(req.user.id, project.rows[0].organization_id);
+    // Only the organization owner or an assigned project admin can remove
+    // project members. Organization admins do not gain automatic project
+    // management rights across every project.
+    const access = await pool.query(
+      `SELECT EXISTS (
+          SELECT 1 FROM organization_members om
+          WHERE om.organization_id = $1 AND om.user_id = $2 AND om.role = 'owner'
+        ) AS is_owner,
+        EXISTS (
+          SELECT 1 FROM project_members pm
+          WHERE pm.project_id = $3 AND pm.user_id = $2 AND pm.role = 'project_admin'
+        ) AS is_project_admin`,
+      [project.rows[0].organization_id, req.user.id, id],
+    );
+    if (!(access.rows[0]?.is_owner || access.rows[0]?.is_project_admin)) {
+      return fail(res, 403, "Project administrator permission required.");
+    }
 
     // Remove user from project.
     await pool.query(

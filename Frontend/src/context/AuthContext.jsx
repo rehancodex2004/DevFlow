@@ -18,6 +18,12 @@ import {
 // api.signup() → signup request
 // api.me()     → get current logged-in user
 import { api } from "../services/api";
+import {
+  claimTabLock,
+  hasActiveTabLock,
+  releaseTabLock,
+  subscribeToTabLock,
+} from "../services/singleTabSession";
 
 
 // Create the Authentication Context.
@@ -48,6 +54,18 @@ export function AuthProvider({ children }) {
   // true  → authentication check is running
   // false → authentication check is finished
   const [loading, setLoading] = useState(true);
+  const [sessionLocked, setSessionLocked] = useState(false);
+
+  async function establishSession(response) {
+    const nextUser = response.data.user;
+    if (!claimTabLock(nextUser.id)) {
+      localStorage.removeItem("cms_token");
+      throw new Error("DevFlow is already open in another tab. Please continue using the existing DevFlow tab.");
+    }
+    setSessionLocked(false);
+    setUser(nextUser);
+    return response;
+  }
 
 
   // ======================================================
@@ -65,11 +83,7 @@ export function AuthProvider({ children }) {
     // If there is no token,
     // the user is not logged in.
     if (!localStorage.getItem("cms_token")) {
-
-      // Authentication checking is finished.
       setLoading(false);
-
-      // Stop here.
       return;
     }
 
@@ -83,7 +97,13 @@ export function AuthProvider({ children }) {
       // If the token is valid,
       // save the user information in state.
       .then((response) => {
-        setUser(response.data);
+        if (claimTabLock(response.data.id)) {
+          setSessionLocked(false);
+          setUser(response.data);
+        } else {
+          setSessionLocked(true);
+          setUser(response.data);
+        }
       })
 
 
@@ -94,6 +114,8 @@ export function AuthProvider({ children }) {
         // Remove the invalid token
         // from localStorage.
         localStorage.removeItem("cms_token");
+        releaseTabLock();
+        setUser(null);
       })
 
 
@@ -105,6 +127,20 @@ export function AuthProvider({ children }) {
       });
 
   }, []);
+
+  useEffect(() => subscribeToTabLock(() => {
+    if (!user) return;
+    if (!localStorage.getItem("cms_token")) {
+      setUser(null);
+      setSessionLocked(false);
+      return;
+    }
+    if (claimTabLock(user.id)) {
+      setSessionLocked(false);
+    } else {
+      setSessionLocked(true);
+    }
+  }), [user]);
 
 
   // ======================================================
@@ -155,6 +191,9 @@ export function AuthProvider({ children }) {
 
   // This function is called when the user logs in.
   async function login(data) {
+    if (hasActiveTabLock()) {
+      throw new Error("DevFlow is already open in another tab. Please continue using the existing DevFlow tab.");
+    }
 
     // Send login information to the backend.
     //
@@ -169,14 +208,8 @@ export function AuthProvider({ children }) {
     // Save the JWT token in localStorage.
     //
     // The token will be used for future protected API requests.
-    localStorage.setItem(
-      "cms_token",
-      response.data.token
-    );
-
-
-    // Save the logged-in user in React state.
-    setUser(response.data.user);
+    localStorage.setItem("cms_token", response.data.token);
+    await establishSession(response);
   }
 
 
@@ -186,20 +219,27 @@ export function AuthProvider({ children }) {
 
   // This function is called when a new user signs up.
   async function signup(data) {
+    if (hasActiveTabLock()) {
+      throw new Error("DevFlow is already open in another tab. Please continue using the existing DevFlow tab.");
+    }
 
     // Send signup information to the backend.
     const response = await api.signup(data);
 
 
     // Save the JWT token returned by the backend.
-    localStorage.setItem(
-      "cms_token",
-      response.data.token
-    );
+    localStorage.setItem("cms_token", response.data.token);
+    await establishSession(response);
+  }
 
-
-    // Save the newly created user in React state.
-    setUser(response.data.user);
+  async function acceptInvitationAccount(token, data) {
+    if (hasActiveTabLock()) {
+      throw new Error("DevFlow is already open in another tab. Please continue using the existing DevFlow tab.");
+    }
+    const response = await api.acceptInvitationAndCreateAccount(token, data);
+    localStorage.setItem("cms_token", response.data.token);
+    await establishSession(response);
+    return response;
   }
 
 
@@ -208,18 +248,22 @@ export function AuthProvider({ children }) {
   // ======================================================
 
   // This function logs the user out.
-  function logout() {
-
-    // Remove the JWT token from localStorage.
-    localStorage.removeItem("cms_token");
-
-    // Remove any stale stale session metadata if the app later stores it.
-    localStorage.removeItem("cms_session_user");
-
-    // Remove the user from React state.
-    //
-    // null means there is no logged-in user.
-    setUser(null);
+  async function logout() {
+    try {
+      if (localStorage.getItem("cms_token")) {
+        await api.logout();
+      }
+    } catch (error) {
+      // Local cleanup still prevents use of the session in this browser if the
+      // backend is unavailable; the server reports errors for authenticated requests.
+      console.error("Logout request failed:", error);
+    } finally {
+      localStorage.removeItem("cms_token");
+      localStorage.removeItem("cms_session_user");
+      releaseTabLock();
+      setUser(null);
+      setSessionLocked(false);
+    }
   }
 
 
@@ -234,8 +278,10 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
+        sessionLocked,
         login,
         signup,
+        acceptInvitationAccount,
         logout,
         setUser
       }}

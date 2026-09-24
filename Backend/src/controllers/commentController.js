@@ -11,8 +11,9 @@ const knowledgeBaseService = require("../services/knowledgeBaseService");
  *   - task information
  *   - project
  *   - organization
- *   - whether user is organization member
- *   - whether user is organization admin
+ *   - whether user is organization owner
+ *   - whether user is project admin
+ *   - whether user is project member
  */
 async function taskAccess(userId, taskId) {
   const r = await pool.query(
@@ -20,6 +21,7 @@ async function taskAccess(userId, taskId) {
     SELECT
       t.id,
       t.project_id,
+      t.assignee_id,
       p.organization_id,
 
       EXISTS (
@@ -27,15 +29,23 @@ async function taskAccess(userId, taskId) {
         FROM organization_members om
         WHERE om.organization_id = p.organization_id
           AND om.user_id = $1
-      ) AS is_member,
+          AND om.role = 'owner'
+      ) AS is_org_owner,
 
       EXISTS (
         SELECT 1
-        FROM organization_members om
-        WHERE om.organization_id = p.organization_id
-          AND om.user_id = $1
-          AND om.role = 'admin'
-      ) AS is_admin
+        FROM project_members pm
+        WHERE pm.project_id = t.project_id
+          AND pm.user_id = $1
+          AND pm.role = 'project_admin'
+      ) AS is_project_admin,
+
+      EXISTS (
+        SELECT 1
+        FROM project_members pm
+        WHERE pm.project_id = t.project_id
+          AND pm.user_id = $1
+      ) AS is_project_member
 
     FROM tasks t
     JOIN projects p
@@ -73,11 +83,11 @@ async function listComments(req, res) {
       return fail(res, 404, "Task not found.");
     }
 
-    if (!access.is_member) {
+    if (!access.is_org_owner && !access.is_project_admin && !(access.is_project_member && String(access.assignee_id) === String(req.user.id))) {
       return fail(
         res,
         403,
-        "Organization membership required."
+        "Task access required."
       );
     }
 
@@ -201,14 +211,14 @@ async function addComment(req, res) {
 
     /*
      * --------------------------------------------------------
-     * ONLY ORGANIZATION MEMBERS CAN COMMENT
+     * ONLY PROJECT-ALLOWED USERS CAN COMMENT
      * --------------------------------------------------------
      */
-    if (!access.is_member) {
+    if (!access.is_org_owner && !access.is_project_admin && !(access.is_project_member && String(access.assignee_id) === String(req.user.id))) {
       return fail(
         res,
         403,
-        "Organization membership required."
+        "Task access required."
       );
     }
 
@@ -530,9 +540,9 @@ async function addComment(req, res) {
  *
  * Permission:
  *
- * Organization admin -> YES
- * Normal member      -> NO
- * Non-member         -> NO
+ * Organization owner or project admin -> YES
+ * Task assignee or normal member      -> NO
+ * Non-member                          -> NO
  */
 async function deleteComment(req, res) {
   try {
@@ -549,7 +559,7 @@ async function deleteComment(req, res) {
 
     /*
      * --------------------------------------------------------
-     * FIND COMMENT + ORGANIZATION + ADMIN STATUS
+     * FIND COMMENT + PROJECT MANAGEMENT STATUS
      * --------------------------------------------------------
      */
     const r = await pool.query(
@@ -561,13 +571,19 @@ async function deleteComment(req, res) {
 
         EXISTS (
           SELECT 1
-
           FROM organization_members om
-
           WHERE om.organization_id = p.organization_id
             AND om.user_id = $2
-            AND om.role = 'admin'
-        ) AS is_admin
+            AND om.role = 'owner'
+        ) AS is_org_owner,
+
+        EXISTS (
+          SELECT 1
+          FROM project_members pm
+          WHERE pm.project_id = t.project_id
+            AND pm.user_id = $2
+            AND pm.role = 'project_admin'
+        ) AS is_project_admin
 
       FROM task_comments c
 
@@ -605,14 +621,14 @@ async function deleteComment(req, res) {
 
     /*
      * --------------------------------------------------------
-     * ONLY ORGANIZATION ADMIN CAN DELETE
+     * ONLY ORG OWNER OR PROJECT ADMIN CAN DELETE
      * --------------------------------------------------------
      */
-    if (!comment.is_admin) {
+    if (!comment.is_org_owner && !comment.is_project_admin) {
       return fail(
         res,
         403,
-        "Organization admin permission required."
+        "Project administrator permission required."
       );
     }
 

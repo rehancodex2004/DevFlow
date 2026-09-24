@@ -1,20 +1,27 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({
+  path: path.resolve(__dirname, "../../.env"),
+});
 
 const { Pool } = require("pg");
 
-console.log("========== DATABASE CONFIG ==========");
-console.log("DB_HOST:", process.env.DB_HOST);
-console.log("DB_PORT:", process.env.DB_PORT);
-console.log("DB_NAME:", process.env.DB_NAME);
-console.log("DB_USER:", process.env.DB_USER);
-console.log("DB_PASSWORD exists:", typeof process.env.DB_PASSWORD === "string");
-console.log("=====================================");
+const requiredDatabaseVariables = ["DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"];
+const missingDatabaseVariables = requiredDatabaseVariables.filter(
+  (variable) => !process.env[variable],
+);
+
+if (missingDatabaseVariables.length) {
+  throw new Error(
+    `Missing database environment variables: ${missingDatabaseVariables.join(", ")}. ` +
+    "Create Backend/.env from Backend/.env.example.",
+  );
+}
 
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || "cms",
-  user: process.env.DB_USER || "postgres",
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
 });
 

@@ -105,24 +105,25 @@ async function projectAccess(userId, projectId) {
         FROM organization_members om
         WHERE om.organization_id = p.organization_id
           AND om.user_id = $1
-      ) AS is_org_member,
+          AND om.role = 'owner'
+      ) AS is_org_owner,
 
       EXISTS (
         SELECT 1
         FROM organization_members om
         WHERE om.organization_id = p.organization_id
           AND om.user_id = $1
-          AND om.role = 'admin'
-      ) AS is_org_admin
+          AND om.role IN ('owner', 'admin')
+      ) AS is_org_admin,
 
-      , EXISTS (
+      EXISTS (
         SELECT 1
         FROM project_members pm
         WHERE pm.project_id = p.id
           AND pm.user_id = $1
-      ) AS is_project_member
+      ) AS is_project_member,
 
-      , EXISTS (
+      EXISTS (
         SELECT 1
         FROM project_members pm
         WHERE pm.project_id = p.id
@@ -178,7 +179,7 @@ async function listTasks(req, res) {
         );
       }
 
-      if (!access.is_org_member) {
+      if (!access.is_org_owner && !access.is_project_member) {
 
         return fail(
           res,
@@ -187,6 +188,9 @@ async function listTasks(req, res) {
         );
       }
 
+      const isProjectAdmin = Boolean(access.is_org_owner || access.is_project_admin);
+      const taskFilter = isProjectAdmin ? "t.project_id = $1" : "t.project_id = $1 AND t.assignee_id = $2";
+      const taskParams = isProjectAdmin ? [projectId] : [projectId, req.user.id];
 
       const result =
         await pool.query(
@@ -227,7 +231,7 @@ async function listTasks(req, res) {
           INNER JOIN organizations o
             ON o.id = p.organization_id
 
-          WHERE t.project_id = $1
+          WHERE ${taskFilter}
 
           ORDER BY
             CASE t.priority
@@ -240,7 +244,7 @@ async function listTasks(req, res) {
 
             t.created_at DESC
           `,
-          [projectId]
+          taskParams
         );
 
 
@@ -278,15 +282,21 @@ async function listTasks(req, res) {
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = p.organization_id
               AND om.user_id = $2
-              AND om.role = 'admin'
-          ) AS is_org_admin,
+              AND om.role = 'owner'
+          ) AS is_org_owner,
 
           EXISTS (
             SELECT 1 FROM project_members pm
             WHERE pm.project_id = p.id
               AND pm.user_id = $2
               AND pm.role = 'project_admin'
-          ) AS is_project_admin
+          ) AS is_project_admin,
+
+          EXISTS (
+            SELECT 1 FROM project_members pm
+            WHERE pm.project_id = p.id
+              AND pm.user_id = $2
+          ) AS is_project_member
 
         FROM tasks t
 
@@ -308,11 +318,30 @@ async function listTasks(req, res) {
         INNER JOIN organizations o
           ON o.id = p.organization_id
 
-        WHERE EXISTS (
-          SELECT 1
-          FROM organization_members om
-          WHERE om.organization_id = p.organization_id
-            AND om.user_id = $1
+        WHERE (
+          EXISTS (
+            SELECT 1
+            FROM organization_members om
+            WHERE om.organization_id = p.organization_id
+              AND om.user_id = $1
+              AND om.role = 'owner'
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM project_members pm
+            WHERE pm.project_id = p.id
+              AND pm.user_id = $1
+              AND pm.role = 'project_admin'
+          )
+          OR (
+            EXISTS (
+              SELECT 1
+              FROM project_members pm
+              WHERE pm.project_id = p.id
+                AND pm.user_id = $1
+            )
+            AND t.assignee_id = $1
+          )
         )
 
         ORDER BY
@@ -453,7 +482,7 @@ async function analyzeTask(req, res) {
     }
 
 
-    if (!access.is_org_member) {
+    if (!access.is_org_owner && !access.is_project_member) {
 
       return fail(
         res,
@@ -1060,10 +1089,10 @@ async function createTask(req, res) {
 
 
     // ========================================================
-    // ORGANIZATION ADMIN
+    // PROJECT ADMIN / OWNER ONLY
     // ========================================================
 
-    if (!access.is_org_admin && !access.is_project_admin) {
+    if (!access.is_org_owner && !access.is_project_admin) {
 
       return fail(
         res,
@@ -1415,7 +1444,7 @@ async function getTask(req, res) {
 
     if (
       !access ||
-      !access.is_org_member
+      (!access.is_org_owner && !access.is_project_member)
     ) {
 
       return fail(
@@ -1425,6 +1454,13 @@ async function getTask(req, res) {
       );
     }
 
+    if (!access.is_org_owner && !access.is_project_admin && task.assignee_id !== req.user.id) {
+      return fail(
+        res,
+        403,
+        "Task access required."
+      );
+    }
 
     return ok(
       res,
@@ -1495,7 +1531,7 @@ async function updateTask(req, res) {
 
     if (
       !access ||
-      !access.is_org_admin && !access.is_project_admin
+      (!access.is_org_owner && !access.is_project_admin)
     ) {
 
       return fail(
@@ -1726,7 +1762,7 @@ async function deleteTask(req, res) {
 
     if (
       !access ||
-      !access.is_org_admin && !access.is_project_admin
+      (!access.is_org_owner && !access.is_project_admin)
     ) {
 
       return fail(

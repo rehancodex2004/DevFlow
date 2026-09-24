@@ -8,6 +8,8 @@ export default function SelectField({
   placeholder = "Select an option",
   disabled = false,
   required = false,
+  className = "",
+  triggerLabel = "",
   "aria-label": ariaLabel,
 }) {
   const [open, setOpen] = useState(false);
@@ -131,7 +133,7 @@ export default function SelectField({
   );
 
   return (
-    <div className={`ui-select ${open ? "is-open" : ""}`} ref={rootRef}>
+    <div className={`ui-select ${open ? "is-open" : ""} ${className}`.trim()} ref={rootRef}>
       <button
         ref={triggerRef}
         type="button"
@@ -143,7 +145,9 @@ export default function SelectField({
         onClick={() => setOpen((current) => !current)}
         onKeyDown={handleKeyDown}
       >
-        <span>{selectedOption?.label || placeholder}</span>
+        <span>
+          {triggerLabel || selectedOption?.label || placeholder}
+        </span>
         <span className="ui-select__chevron" aria-hidden="true" />
       </button>
 

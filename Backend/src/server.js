@@ -1,5 +1,8 @@
-// Load .env variables
-require("dotenv").config();
+// Load Backend/.env regardless of the directory used to launch the process.
+const path = require("path");
+require("dotenv").config({
+  path: path.resolve(__dirname, "../.env"),
+});
 
 
 // ===============================
@@ -11,16 +14,19 @@ const http = require("http");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
+const { isTokenRevoked } = require("./middleware/authMiddleware");
 
 
 // Routes
 const knowledgeRoutes = require("./routes/knowledgeRoutes");
 const authRoutes = require("./routes/authRoutes");
 const organizationRoutes = require("./routes/organizationRoutes");
+const invitationRoutes = require("./routes/invitationRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const memoryRoutes = require("./routes/memoryRoutes");
 
 // ===============================
 // CREATE SERVER
@@ -50,7 +56,7 @@ const io = new Server(httpServer, {
 
 // This runs when a user tries to connect
 // to Socket.IO.
-io.use((socket, next) => {
+io.use(async (socket, next) => {
 
   try {
 
@@ -67,6 +73,10 @@ io.use((socket, next) => {
       token,
       process.env.JWT_SECRET
     );
+
+    if (await isTokenRevoked(token)) {
+      return next(new Error("Authentication token has been revoked"));
+    }
 
     // Save user information inside socket
     socket.user = user;
@@ -228,6 +238,7 @@ app.use(
   "/api/organizations",
   organizationRoutes
 );
+app.use("/api/invitations", invitationRoutes);
 
 app.use(
   "/api/projects",
@@ -245,6 +256,7 @@ app.use(
 );
 // new add for AI analysis of task
 app.use("/api/ai", aiRoutes);
+app.use("/api/ai/memories", memoryRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
 // ===============================
 // 404

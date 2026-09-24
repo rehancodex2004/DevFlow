@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../services/api";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import AIMemoryPanel from "./AIMemoryPanel";
 import "../styles/ai-global.css";
 
 const SUGGESTIONS = [
@@ -55,6 +56,11 @@ function Message({ message }) {
             ))}
           </div>
         )}
+      {!isUser && message.memoriesUsed > 0 && (
+        <div className="ai-sources ai-memory-used">
+          Memory used · {message.memoriesUsed}
+        </div>
+      )}
     </div>
   );
 }
@@ -77,6 +83,7 @@ export default function GlobalAIChat({
   const [viewingHistory, setViewingHistory] = useState(false);
   const [historyStatus, setHistoryStatus] = useState(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   const scrollRef = useRef(null);
 
@@ -213,6 +220,7 @@ export default function GlobalAIChat({
           role: "assistant",
           content: answer,
           sources,
+          memoriesUsed: data.memoriesUsed || 0,
         },
       ]);
     } catch (e) {
@@ -320,6 +328,14 @@ export default function GlobalAIChat({
           <div className="ai-global-header-actions">
 
             {/* END CHAT */}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setMemoryOpen(true)}
+            >
+              Memory
+            </button>
+
             <button
               type="button"
               className="btn btn-secondary"
@@ -495,6 +511,7 @@ export default function GlobalAIChat({
         description="End this AI chat session? You can still review saved history, but this conversation can't be continued."
         confirmLabel="End session"
       />
+      <AIMemoryPanel isOpen={memoryOpen} onClose={() => setMemoryOpen(false)} />
 
     </div>
   );

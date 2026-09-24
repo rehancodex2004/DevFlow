@@ -10,6 +10,8 @@ import KnowledgeSearchPage from "./pages/KnowledgeSearchPage";
 // Auth
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Organizations
 import Organizations from "./pages/Organizations";
@@ -24,6 +26,7 @@ import TasksPage from "./pages/TasksPage";
 // Tasks
 import TaskDetail from "./pages/TaskDetail";
 import Profile from "./pages/Profile";
+import Invitation from "./pages/Invitation";
 
 export default function App() {
   return (
@@ -37,6 +40,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
 
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/invitations/:token" element={<Invitation />} />
 
           {/* =========================
               PROTECTED ROUTES

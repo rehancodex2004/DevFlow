@@ -68,6 +68,25 @@
   margin: 18px 0 0;
 }
 
+/* Keep the Projects create form balanced inside its split card at desktop
+   widths without changing the shared form grid used by other pages. */
+.projects-create-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 14px 16px;
+}
+
+.projects-create-form > .ui-field:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.projects-create-form > .ui-button {
+  grid-column: 2;
+  justify-self: end;
+  width: auto;
+  min-width: 0;
+}
+
 .ui-field {
   display: grid;
   gap: 7px;
@@ -198,6 +217,7 @@
   flex-direction: column;
   min-height: 188px;
   padding: 17px;
+  cursor: pointer;
   transition: transform .16s ease, border-color .16s ease, background .16s ease;
 }
 
@@ -869,6 +889,10 @@
 
   .page > .ui-split-card > .ui-form-row > .ui-button {
     width: 100%;
+  }
+
+  .projects-create-form > .ui-button {
+    justify-self: stretch;
   }
 }
 

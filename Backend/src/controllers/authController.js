@@ -1,5 +1,6 @@
 // bcryptjs password ko securely hash aur compare karne ke liye use hota hai
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 
 // jsonwebtoken JWT token create karne ke liye use hota hai
 const jwt = require("jsonwebtoken");
@@ -9,6 +10,8 @@ const pool = require("../config/database");
 
 // Response ko standard format mein bhejne ke liye helper functions
 const { ok, created, fail } = require("../utils/response");
+const { hashToken } = require("../middleware/authMiddleware");
+const { sendPasswordResetEmail } = require("../services/emailService");
 
 const emailRegex =
   /^(?!.*\.\.)[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
@@ -27,6 +30,10 @@ function getPasswordErrors(password) {
   return passwordRequirements
     .filter((requirement) => !requirement.test(password))
     .map((requirement) => requirement.message);
+}
+
+function getResetToken() {
+  return crypto.randomBytes(32).toString("hex");
 }
 
 // ======================================================
@@ -300,6 +307,107 @@ async function login(req, res) {
   }
 }
 
+async function requestPasswordReset(req, res) {
+  const email = typeof req.body?.email === "string"
+    ? req.body.email.trim().toLowerCase()
+    : "";
+
+  if (!emailRegex.test(email)) {
+    return fail(res, 400, "Please enter a valid email address.");
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT id, email FROM users WHERE email = $1 AND status = 'active'",
+      [email],
+    );
+
+    if (result.rowCount) {
+      const token = getResetToken();
+      await pool.query(
+        "UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL",
+        [result.rows[0].id],
+      );
+      await pool.query(
+        `INSERT INTO password_reset_tokens (token_hash, user_id, expires_at)
+         VALUES ($1, $2, NOW() + INTERVAL '1 hour')`,
+        [hashToken(token), result.rows[0].id],
+      );
+
+      const emailResult = await sendPasswordResetEmail({
+        email: result.rows[0].email,
+        token,
+      });
+      if (!emailResult.sent) {
+        console.error("Password reset email was not sent:", emailResult);
+      }
+    }
+
+    return ok(
+      res,
+      null,
+      "If an active account exists for that email, a password reset link has been sent.",
+    );
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    return fail(res, 500, "Unable to process the password reset request.");
+  }
+}
+
+async function resetPassword(req, res) {
+  const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+
+  if (!/^[a-f0-9]{64}$/i.test(token)) {
+    return fail(res, 400, "This password reset link is invalid or has expired.");
+  }
+
+  const passwordErrors = getPasswordErrors(password);
+  if (passwordErrors.length) {
+    return fail(res, 400, `Password must include ${passwordErrors.join(", ")}.`);
+  }
+
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query("BEGIN");
+    const result = await client.query(
+      `SELECT user_id
+       FROM password_reset_tokens
+       WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+       FOR UPDATE`,
+      [hashToken(token)],
+    );
+
+    if (!result.rowCount) {
+      await client.query("ROLLBACK");
+      return fail(res, 400, "This password reset link is invalid, expired, or has already been used.");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    await client.query(
+      `UPDATE users SET password = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [hashedPassword, result.rows[0].user_id],
+    );
+    await client.query(
+      "UPDATE password_reset_tokens SET used_at = NOW() WHERE token_hash = $1",
+      [hashToken(token)],
+    );
+    await client.query("COMMIT");
+
+    return ok(res, null, "Password changed successfully. You can now sign in.");
+  } catch (error) {
+    if (client) {
+      await client.query("ROLLBACK").catch(() => {});
+    }
+    console.error("Password reset error:", error);
+    return fail(res, 500, "Unable to reset your password.");
+  } finally {
+    client?.release();
+  }
+}
+
 // ======================================================
 // CURRENT USER / ME
 // ======================================================
@@ -371,6 +479,32 @@ async function updateMe(req, res) {
   }
 }
 
+// Revoke the presented JWT so it cannot be used again after logout.
+async function logout(req, res) {
+  try {
+    const token = req.authToken;
+    const expiresAt = req.authPayload?.exp
+      ? new Date(req.authPayload.exp * 1000)
+      : null;
+
+    if (!token || !expiresAt || Number.isNaN(expiresAt.getTime())) {
+      return fail(res, 401, "Authentication required.");
+    }
+
+    await pool.query(
+      `INSERT INTO revoked_auth_tokens (token_hash, expires_at)
+       VALUES ($1, $2)
+       ON CONFLICT (token_hash) DO NOTHING`,
+      [hashToken(token), expiresAt],
+    );
+
+    return ok(res, null, "Logged out successfully.");
+  } catch (error) {
+    console.error("Logout error:", error);
+    return fail(res, 500, "Unable to log out.");
+  }
+}
+
 // ======================================================
 // EXPORT FUNCTIONS
 // ======================================================
@@ -381,4 +515,8 @@ module.exports = {
   login,
   me,
   updateMe,
+  logout,
+  requestPasswordReset,
+  resetPassword,
+  makeToken,
 };

@@ -817,7 +817,7 @@ export default function TasksPage() {
         Number(org.id) === Number(task.organization_id || task.organizationId),
     );
 
-    return organization?.my_role === "admin";
+    return ["owner", "admin"].includes(organization?.my_role);
   };
 
   const canManageTask = (task) => {

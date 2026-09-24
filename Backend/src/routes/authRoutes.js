@@ -12,7 +12,10 @@ const {
   signup,
   login,
   me,
-  updateMe
+  updateMe,
+  logout,
+  requestPasswordReset,
+  resetPassword,
 } = require("../controllers/authController");
 
 
@@ -57,6 +60,8 @@ router.post("/signup", signup);
 // Example:
 // POST /auth/login
 router.post("/login", login);
+router.post("/forgot-password", requestPasswordReset);
+router.post("/reset-password", resetPassword);
 
 
 // ======================================================
@@ -78,6 +83,9 @@ router.get("/me", requireAuth, me);
 
 // PUT /auth/me updates only the authenticated user's own profile.
 router.put("/me", requireAuth, updateMe);
+
+// POST /auth/logout revokes the presented JWT on the backend.
+router.post("/logout", requireAuth, logout);
 
 
 // Export this router.

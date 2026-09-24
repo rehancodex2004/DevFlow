@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import SelectField from "../components/ui/SelectField";
 import { api } from "../services/api";
 import Button from "../components/ui/Button";
 import InlineNotice from "../components/ui/InlineNotice";
@@ -44,8 +45,8 @@ export default function Profile() {
     { id: "security", icon: "⌁", label: "Security & sessions" },
   ];
 
-  function signOut() {
-    logout();
+  async function signOut() {
+    await logout();
     navigate("/login", { replace: true });
   }
 
@@ -58,11 +59,16 @@ export default function Profile() {
           <p className="profile-section-description">Choose how DevFlow should look on this device.</p>
           <div className="profile-option-row">
             <div><b>Theme</b><span>Use a light, dark, or system theme.</span></div>
-            <select value={theme} onChange={(event) => setTheme(event.target.value)} aria-label="Theme preference">
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
+            <SelectField
+              value={theme}
+              onChange={(event) => setTheme(event.target.value)}
+              aria-label="Theme preference"
+              options={[
+                { value: "system", label: "System" },
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+              ]}
+            />
           </div>
         </div>
       );

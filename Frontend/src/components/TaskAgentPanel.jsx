@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import Button from "./ui/Button";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import AIMemoryPanel from "./AIMemoryPanel";
 import { api } from "../services/api";
 
-function AgentMessage({ role, content }) {
+function AgentMessage({ role, content, memoriesUsed = 0 }) {
   return (
     <div className={`task-agent-message task-agent-message--${role}`}>
       <span className="task-agent-message__label">
@@ -15,6 +16,9 @@ function AgentMessage({ role, content }) {
           <p key={index}>{line}</p>
         ))}
       </div>
+      {role === "agent" && memoriesUsed > 0 && (
+        <div className="ai-memory-used">Memory used · {memoriesUsed}</div>
+      )}
     </div>
   );
 }
@@ -31,6 +35,7 @@ export default function TaskAgentPanel({ taskId, onTaskDeleted }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pendingConfirmation, setPendingConfirmation] = useState(null);
+  const [memoryOpen, setMemoryOpen] = useState(false);
 
   const scrollRef = useRef(null);
 
@@ -82,6 +87,7 @@ export default function TaskAgentPanel({ taskId, onTaskDeleted }) {
         {
           role: "agent",
           content: answer,
+          memoriesUsed: data.memoriesUsed || 0,
         },
       ]);
 
@@ -177,6 +183,9 @@ export default function TaskAgentPanel({ taskId, onTaskDeleted }) {
         >
           ✦
         </span>
+        <Button type="button" variant="secondary" onClick={() => setMemoryOpen(true)}>
+          Memory
+        </Button>
       </header>
 
       <div
@@ -308,6 +317,7 @@ export default function TaskAgentPanel({ taskId, onTaskDeleted }) {
           Send
         </Button>
       </form>
+      <AIMemoryPanel isOpen={memoryOpen} onClose={() => setMemoryOpen(false)} scope={{ taskId }} title="Task Memory" />
     </section>
   );
 }

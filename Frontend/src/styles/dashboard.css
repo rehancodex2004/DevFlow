@@ -2,7 +2,12 @@
    DASHBOARD (Linear-inspired, uses existing --bg/--surface/--border tokens)
    ============================================================ */
 
-.dashboard { padding: 28px 32px 60px; max-width: 1320px; margin: 0 auto; }
+.dashboard {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 32px 60px;
+}
 .dashboard-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
 .dashboard-header h1 { margin: 2px 0 0; font-size: 22px; letter-spacing: -.02em; color: var(--text); }
 .eyebrow { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }

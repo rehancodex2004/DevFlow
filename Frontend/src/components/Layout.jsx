@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import SelectField from "./ui/SelectField";
 import CommandPalette from "./CommandPalette";
 import GlobalAIChat from "./GlobalAIChat";
 import "../styles/layout.css";
@@ -75,8 +76,8 @@ export default function Layout() {
     return () => window.removeEventListener("keydown", closeMenuWithEscape);
   }, []);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     setIsMobileMenuOpen(false);
     navigate("/login", { replace: true });
   }
@@ -144,11 +145,16 @@ export default function Layout() {
           </div>
           <label className="theme-select">
             <span>Theme</span>
-            <select value={theme} onChange={(event) => setTheme(event.target.value)} aria-label="Theme preference">
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
-            </select>
+            <SelectField
+              value={theme}
+              onChange={(event) => setTheme(event.target.value)}
+              aria-label="Theme preference"
+              options={[
+                { value: "light", label: "Light" },
+                { value: "dark", label: "Dark" },
+                { value: "system", label: "System" },
+              ]}
+            />
           </label>
           <button className="ghost-button" type="button" onClick={handleLogout}>Log out</button>
         </div>

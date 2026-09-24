@@ -2,6 +2,7 @@ const pool = require("../config/database");
 const aiService = require("../services/aiService");
 const { assertTaskAccess } = require("../services/retrievalService");
 const { ok, fail } = require("../utils/response");
+const { extractMemoriesFromConversation, isExplicitMemoryCommand } = require("../services/memoryService");
 
 // ============================================================
 // GET OR CREATE ACTIVE TASK AI SESSION
@@ -121,7 +122,8 @@ async function taskChat(req, res) {
 
     const history = historyResult.rows.reverse();
 
-    const { answer, sources, intent } = await aiService.taskChat({
+    const { answer, sources, intent, memoriesUsed } = await aiService.taskChat({
+      userId: req.user.id,
       taskId: scope.taskId,
       projectId: scope.projectId,
       organizationId: scope.organizationId,
@@ -144,6 +146,24 @@ async function taskChat(req, res) {
         message.trim(),
       ]
     );
+
+    if (isExplicitMemoryCommand(message)) {
+      await extractMemoriesFromConversation({
+        userId: req.user.id,
+        message: message.trim(),
+        taskId: scope.taskId,
+        projectId: scope.projectId,
+        organizationId: scope.organizationId,
+      });
+    } else {
+      void extractMemoriesFromConversation({
+        userId: req.user.id,
+        message: message.trim(),
+        taskId: scope.taskId,
+        projectId: scope.projectId,
+        organizationId: scope.organizationId,
+      }).catch((error) => console.error("Background task memory extraction failed:", error.message));
+    }
 
     // Save AI response with session_id.
     await pool.query(
@@ -179,6 +199,7 @@ async function taskChat(req, res) {
       answer,
       sources,
       intent,
+      memoriesUsed,
       sessionId: session.id,
     });
   } catch (error) {
@@ -276,7 +297,7 @@ async function getTaskChatHistory(req, res) {
 
 async function globalChat(req, res) {
   try {
-    const { message } = req.body;
+    const { message, context = null } = req.body;
 
     if (!message || !String(message).trim()) {
       return fail(res, 400, "Message is required.");
@@ -302,7 +323,7 @@ async function globalChat(req, res) {
 
     const history = historyResult.rows.reverse();
 
-    const { answer, sources } = await aiService.globalChat({
+    const { answer, sources, memoriesUsed } = await aiService.globalChat({
       userId: req.user.id,
       message: message.trim(),
       history,
@@ -323,6 +344,18 @@ async function globalChat(req, res) {
         message.trim(),
       ]
     );
+
+    if (isExplicitMemoryCommand(message)) {
+      await extractMemoriesFromConversation({
+        userId: req.user.id,
+        message: message.trim(),
+      });
+    } else {
+      void extractMemoriesFromConversation({
+        userId: req.user.id,
+        message: message.trim(),
+      }).catch((error) => console.error("Background global memory extraction failed:", error.message));
+    }
 
     // Save AI response.
     await pool.query(
@@ -356,6 +389,7 @@ async function globalChat(req, res) {
     return ok(res, {
       answer,
       sources,
+      memoriesUsed,
       sessionId: session.id,
     });
   } catch (error) {

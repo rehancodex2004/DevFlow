@@ -198,6 +198,17 @@
   line-height: 1.5;
 }
 
+.auth-card .success-box {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: rgba(35, 130, 85, 0.18);
+  border: 1px solid rgba(80, 190, 125, 0.35);
+  color: #a9f0c2;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 
 /* =========================================================
    FORM LABEL
@@ -480,6 +491,53 @@
 
 .auth-card input[aria-invalid="true"] {
   border-color: #d85c70;
+}
+
+.blocked-session-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--background, #0b0d11);
+}
+
+.blocked-session-card {
+  width: min(100%, 520px);
+  box-sizing: border-box;
+  padding: clamp(28px, 6vw, 52px);
+  border: 1px solid var(--border, #2a303b);
+  border-radius: 20px;
+  background: var(--surface, #11151b);
+  color: var(--text, #eef1f7);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.blocked-session-card .brand-mark {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 24px;
+}
+
+.blocked-session-card h1 {
+  margin: 0;
+  font-size: clamp(24px, 5vw, 34px);
+  line-height: 1.15;
+}
+
+.blocked-session-card p {
+  margin: 16px 0 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 420px) {
+  .blocked-session-page {
+    padding: 16px;
+  }
+
+  .blocked-session-card {
+    padding: 28px 20px;
+  }
 }
 
 /* Har password rule user ko foran samajh aa jata hai. */
