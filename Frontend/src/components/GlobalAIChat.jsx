@@ -264,14 +264,20 @@ export default function GlobalAIChat({
     setEndingChat(true);
 
     try {
-      await api.globalChatEnd();
+      const response = await api.globalChatEnd();
+      const result = response.data || {};
 
-      // Clear current conversation and reset the active view.
+      if (!result.ended) {
+        setError(result.message || "No active Global AI session found.");
+        return;
+      }
+
       setMessages([]);
       setInput("");
       setViewingHistory(false);
       setHistoryStatus(null);
-      setHistoryLoaded(true);
+      setHistoryLoaded(false);
+      onClose();
     } catch (e) {
       setError(
         e.message ||
