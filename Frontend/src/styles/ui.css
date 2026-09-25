@@ -491,7 +491,7 @@
 /* Dialog shell used by small CRUD forms. */
 .ui-modal-backdrop {
   position: fixed;
-  z-index: 100;
+  z-index: 10000;
   inset: 0;
   display: grid;
   place-items: center;
