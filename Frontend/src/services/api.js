@@ -63,6 +63,10 @@ async function request(path, options = {}) {
     }
   });
 
+  if (response.status === 401 && token) {
+    localStorage.removeItem("cms_token");
+    window.dispatchEvent(new Event("auth-expired"));
+  }
 
   // Convert backend response into JSON.
   //

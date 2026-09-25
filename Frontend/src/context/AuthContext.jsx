@@ -154,7 +154,6 @@ export function AuthProvider({ children }) {
   // (fires only in OTHER tabs, never the one that made the
   // change) and resync.
   useEffect(() => {
-
     function handleStorageChange(event) {
 
       // Ignore changes to unrelated localStorage keys.
@@ -182,6 +181,17 @@ export function AuthProvider({ children }) {
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
 
+  }, []);
+
+  useEffect(() => {
+    function handleAuthExpired() {
+      releaseTabLock();
+      setUser(null);
+      setSessionLocked(false);
+    }
+
+    window.addEventListener("auth-expired", handleAuthExpired);
+    return () => window.removeEventListener("auth-expired", handleAuthExpired);
   }, []);
 
 
